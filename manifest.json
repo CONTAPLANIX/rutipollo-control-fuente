@@ -1,0 +1,14 @@
+{
+  "name": "Rutipollo Control",
+  "short_name": "Control",
+  "description": "Control interno Rico Pollo Dissur: ingresos, egresos, kardex y utilidad",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#092D58",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
