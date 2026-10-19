@@ -9,8 +9,9 @@
   `egresos/{id}` {tipo gasto|ajuste, fecha, anio, mes, dia, categoria, descripcion, monto, metodo, kardex{producto,kg}|null,
   foto (dataURL jpeg comprimido)|null, registradoPor, creadoEn, eliminado (papelera, nunca se borra)},
   `cierres/{fecha}` {esperado, real, diferencia, nota, por}, `control/config` {categorias[]}.
-- Kardex (dentro de Gastos): entradas = gastos con "compra de mercadería" (producto + kilos); salidas = kilos vendidos en las notas
-  (kg, o cantidad si no hay kg); ajustes = tipo `ajuste` (monto 0, no afecta utilidad).
+- Kardex: entradas = gastos con "compra de mercadería" (producto + kilos); salidas = kilos vendidos en las notas (kg, o cantidad si no
+  hay kg); ajustes = tipo `ajuste` y mermas = tipo `merma` (ambos monto 0, no afectan la utilidad; la merma muestra pérdida estimada = kg × costo promedio).
+- "Tienda en vivo": panel de HOY que se actualiza solo (notas conforme se emiten, por vendedor, productos, gastos del día, mapa por nota).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
