@@ -297,7 +297,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C20";
+var APP_VERSION = "18 oct · C21";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -869,7 +869,22 @@ function dibujarCamion(ctx, c){
 }
 function efecto(tipo, x, y, z, texto, color, tx, ty){ VIVO.efectos.push({ tipo:tipo, x:x, y:y, z:z||0, texto:texto, color:color||"#1d7a3e", vida:tipo==="moneda" ? 1.1 : 2.6, t:0, ox:x, oy:y, oz:z||0, tx:(tx===undefined ? 6.3 : tx), ty:(ty===undefined ? 4.4 : ty) }); }
 function rolDe(nombre){ var n = normalizar(nombre); var u = (S.usuarios||[]).find(function(x){ return normalizar(x.nombre)===n; }); if(u) return u.rol==='admin' ? 'admin' : 'vendedor'; if(S.user && normalizar(S.user.nombre)===n) return 'admin'; return 'vendedor'; }
-function esVentaEnRuta(v){ return rolDe(v.vendedor||'') !== 'admin'; }
+function rutaHoy(){ var r = S.config.rutaHoy; var hoyF = todayISO(); if(r && r.fecha === hoyF && Array.isArray(r.nombres)) return r.nombres.map(String); return (S.usuarios||[]).filter(function(u){ return u.rol !== "admin" && u.nombre; }).map(function(u){ return String(u.nombre); }); }
+function enRutaHoy(nombre){ var n = normalizar(nombre); if(rutaHoy().some(function(x){ return normalizar(x)===n; })) return true; var r = S.config.rutaHoy; if(r && r.fecha === todayISO() && Array.isArray(r.nombres)) return false; return rolDe(nombre) !== 'admin'; }
+function esVentaEnRuta(v){ return enRutaHoy(v.vendedor||''); }
+function abrirRutaHoy(){
+  var todos = (S.usuarios||[]).map(function(u){ return String(u.nombre||""); }).filter(Boolean).sort(); if(!todos.length) todos = [S.user.nombre];
+  var sel = rutaHoy();
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>¿Quién sale a ruta hoy?</h2><p class="kard-sub" style="margin-bottom:10px;">Los marcados aparecen junto al camión y sus notas se ven como ventas en ruta. Los demás atienden en caja. Vale solo por hoy, '+fechaDisplay(todayISO())+'.</p>'
+    + todos.map(function(n){ var on = sel.some(function(x){ return normalizar(x)===normalizar(n); }); return '<label class="chk"><input type="checkbox" class="ruta-chk" value="'+escapeHtml(n)+'"'+(on?' checked':'')+'> '+escapeHtml(n)+' <span class="kard-sub">'+(rolDe(n)==="admin" ? "caja" : "ruta")+'</span></label>'; }).join("")
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-ruta-hoy">Guardar</button></div></div></div>';
+}
+function guardarRutaHoy(){
+  var nombres = [].slice.call(document.querySelectorAll(".ruta-chk:checked")).map(function(c){ return c.value; });
+  S.config.rutaHoy = { fecha:todayISO(), nombres:nombres }; closeOverlay();
+  S.db.doc("control/config").set({ rutaHoy:S.config.rutaHoy, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Ruta de hoy: "+(nombres.join(", ")||"nadie")); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; vivoRefrescar();
+}
 function dibujarEfectos(ctx, dt){
   VIVO.efectos = VIVO.efectos.filter(function(e){ e.t += dt; return e.t < e.vida; });
   VIVO.efectos.forEach(function(e){
@@ -1299,13 +1314,13 @@ function vivoReconstruirMotos(){
   VIVO.motos = [{ nombre:"REPARTO", quien:"", x:5.2, px:5.2, y:9.45, color:"#2a78d6", fuera:false, t:0, dur:0 }];
 }
 function vivoRuteros(){
-  var ruta = (S.usuarios||[]).filter(function(u){ return u.rol !== "admin" && u.nombre; }).map(function(u){ return String(u.nombre); }).sort().slice(0, 2);
+  var ruta = rutaHoy().slice().sort().slice(0, 3);
   var clave = ruta.join("|"); if(VIVO.ruterosClave === clave && VIVO.ruteros && VIVO.ruteros.every(function(c){ return c.viva; })) return;
   (VIVO.ruteros||[]).forEach(function(c){ c.viva = false; }); VIVO.ruterosClave = clave; var m = VIVO.motos[0] || { px:5.2 };
   VIVO.ruteros = ruta.map(function(n, i){ var pr = nuevaPersona({ x:m.px + 1.5 + i*0.7, y:9.0, color:i===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; return pr; });
 }
 function vivoCajeros(){
-  var admins = (S.usuarios||[]).filter(function(u){ return u.rol==="admin" && u.nombre; }).map(function(u){ return String(u.nombre); }).sort();
+  var admins = (S.usuarios||[]).filter(function(u){ return u.rol==="admin" && u.nombre && !enRutaHoy(u.nombre); }).map(function(u){ return String(u.nombre); }).sort();
   if(!admins.length) admins = [S.user ? S.user.nombre : "Caja"];
   admins = admins.slice(0, 3); var clave = admins.join("|"); if(VIVO.cajerosClave === clave && VIVO.cajeros && VIVO.cajeros.every(function(c){ return c.viva; })) return;
   (VIVO.cajeros||[]).forEach(function(c){ c.viva = false; }); VIVO.cajerosClave = clave;
@@ -1370,7 +1385,7 @@ function renderEnVivo(){
   var f = todayISO();
   return '<h1 class="section-title"><span class="live-dot"></span>Rico Pollo en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
     + '<div class="vivo-grid"><div class="card vivo-card"><canvas id="vivo-canvas" aria-label="Escena del local en vivo"></canvas>'
-    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
+    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
     + '<div class="card" id="vivo-panel">'+vivoPanelHtml()+'</div></div>';
 }
 function vivoMontar(){
@@ -1900,6 +1915,7 @@ function conectarDatos(){
   S.unsubs.push(db.doc("control/config").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null; if(d && Array.isArray(d.categorias) && d.categorias.length) S.categorias = d.categorias.map(String);
     if(d && d.alertas) Object.keys(CONFIG_BASE.alertas).forEach(function(k){ if(d.alertas[k] !== undefined) S.config.alertas[k] = num(d.alertas[k]); });
     if(d && d.metas) Object.keys(CONFIG_BASE.metas).forEach(function(k){ if(d.metas[k] !== undefined) S.config.metas[k] = num(d.metas[k]); });
+    if(d && d.rutaHoy) S.config.rutaHoy = d.rutaHoy;
     if(!document.querySelector(".overlay")) render(); }, function(){}));
   S.unsubs.push(db.collection("cierres").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.cierres[ch.doc.id]; else S.cierres[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(UI.vista==="caja" && !document.querySelector(".overlay")) render(); }, function(){}));
   db.collection("productos").get().then(function(snap){ S.productos = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id:d.id }); }); }).catch(function(){});
@@ -1929,6 +1945,8 @@ document.addEventListener("click", function(ev){
   if(action==="vista"){ UI.vista = val; UI.gastosCat = ""; render(); return; }
   if(action==="per-tipo"){ UI.per.tipo = val; if(val==="dia" && !UI.per.dia) UI.per.dia = todayISO(); asegurarAnios(); render(); return; }
   if(action==="tema"){ var nt = temaActual()==="dark" ? "light" : "dark"; lsSet("tema", nt); aplicarTema(nt); render(); return; }
+  if(action==="ruta-hoy"){ abrirRutaHoy(); return; }
+  if(action==="guardar-ruta-hoy"){ guardarRutaHoy(); return; }
   if(action==="vivo-3d"){ T3.on = !T3.on; lsSet("vista3d", T3.on); window.__vistaAnt = null; render(); return; }
   if(action==="vivo-tv"){ var on = !document.body.classList.contains("tv"); document.body.classList.toggle("tv", on); if(on && document.documentElement.requestFullscreen){ document.documentElement.requestFullscreen().catch(function(){}); } else if(!on && document.fullscreenElement){ document.exitFullscreen().catch(function(){}); } setTimeout(vivoLayout, 350); return; }
   if(action==="util-base"){ UI.utilBase = val; lsSet("utilBase", val); render(); return; }
