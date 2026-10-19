@@ -19,6 +19,10 @@
   de formas de pago; mini tendencias de 14 días), avisos (caja descuadrada, cliente con deuda, stock bajo; límites en `control/config.alertas`),
   metas del mes (`control/config.metas`), ranking de clientes y productos (margen con costo del Kardex), sonido + voz en Rico Pollo en vivo
   (botón, se guarda en localStorage) e instalación como app (`sw.js`: index siempre de red, resto en caché).
+- C9/C10 (18-oct-2026): pestaña Avisos propia; iconos SVG de línea (`ICONOS`/`ico()`), animación de columnas y conteo de números al
+  cambiar de vista o periodo, botón claro/oscuro (`data-theme`, guardado en localStorage), mapa de ventas con Leaflet 1.9.4 (cdnjs + teselas
+  de OpenStreetMap; puntos por nota con `ubicacion`), calendario de calor del mes (SVG), línea de utilidad acumulada en el gráfico, gráficos
+  dentro del PDF (SVG → JPEG) y modo TV en Rico Pollo en vivo (`body.tv` + pantalla completa).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
