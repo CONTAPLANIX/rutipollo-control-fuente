@@ -230,7 +230,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C6";
+var APP_VERSION = "18 oct · C7";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -446,7 +446,7 @@ function render(){
   if(!S.user){ renderGate(); return; }
   if(UI.vista==="envivo" && window.__vistaAnt==="envivo" && document.getElementById("vivo-canvas")){ vivoRefrescar(); return; }
   var root = document.getElementById("app");
-  var navs = [["tablero","📊","Tablero"],["envivo","🟢","En vivo"],["gastos","💸","Gastos"],["kardex","📦","Kardex"],["caja","💵","Caja"],["ajustes","⚙️","Ajustes"]];
+  var navs = [["tablero","📊","Tablero"],["envivo","🟢","Rico Pollo"],["gastos","💸","Gastos"],["kardex","📦","Kardex"],["caja","💵","Caja"],["ajustes","⚙️","Ajustes"]];
   function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+n[2]+'</span></button>'; }).join(""); }
   var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="kardex" ? renderKardex() : UI.vista==="caja" ? renderCaja() : renderAjustes();
   root.innerHTML = ''
