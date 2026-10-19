@@ -190,6 +190,10 @@
   #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
   .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
   .vivo-card:fullscreen{ background:var(--paper); padding:16px; display:flex; flex-direction:column; justify-content:center; }
+  .rec-wrap{ text-align:center; overflow:auto; background:var(--paper-alt); border-radius:10px; padding:6px; max-height:62vh; }
+  #rec-canvas{ touch-action:none; cursor:crosshair; max-width:100%; border-radius:6px; }
+  .rec-chips{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  .rec-chips .btn{ font-family:"IBM Plex Mono",monospace; }
   .card{ background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--r-md); padding:16px; box-shadow:var(--shadow-sm); margin-bottom:16px; min-width:0; }
   .card h2{ font-size:16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .card h2 .kard-sub{ font-family:"IBM Plex Sans",system-ui,sans-serif; text-transform:none; letter-spacing:0; font-weight:400; }
@@ -287,11 +291,12 @@
 <body>
 <div id="app"></div>
 <div id="overlay-root"></div>
+<div id="recorte-root"></div>
 <div id="toast" class="toast"></div>
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C14";
+var APP_VERSION = "18 oct · C15";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1210,20 +1215,87 @@ function abrirFormGasto(e){
     + '<label class="chk"><input type="checkbox" id="g-kardex"'+(conKardex?' checked':'')+'> Es compra de mercadería (entra al Kardex)</label>'
     + '<div id="g-kardex-campos" class="grid-2" style="'+(conKardex?'':'display:none;')+'"><div class="field"><label for="g-prod">Producto</label><input type="text" id="g-prod" list="g-prod-lista" placeholder="Ej. POLLO ENTERO" value="'+escapeHtml(conKardex?g.kardex.producto:"")+'"><datalist id="g-prod-lista">'+productosNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div>'
     + '<div class="field"><label for="g-kg">Kilos / unidades</label><input type="number" id="g-kg" inputmode="decimal" step="0.01" min="0" placeholder="0" value="'+(conKardex?num(g.kardex.kg):"")+'"></div></div>'
-    + '<div class="field"><label for="g-foto">Foto del comprobante (opcional)</label><input type="file" id="g-foto" accept="image/*"><img id="g-foto-prev" class="foto-prev" src="'+(g.foto||"")+'" alt="" style="'+(g.foto?'':'display:none;')+'">'+(g.foto ? '<button type="button" class="btn btn-sm" data-action="g-quitar-foto" style="margin-top:6px;">Quitar foto</button>' : '')+'</div>'
+    + '<div class="field"><label for="g-foto">Foto del comprobante (opcional) · se puede recortar y leer el monto</label><input type="file" id="g-foto" accept="image/*"><img id="g-foto-prev" class="foto-prev" src="'+(g.foto||"")+'" alt="" style="'+(g.foto?'':'display:none;')+'">'+(g.foto ? '<button type="button" class="btn btn-sm" data-action="g-quitar-foto" style="margin-top:6px;">Quitar foto</button>' : '')+'</div>'
     + '<div class="pin-error" id="g-error"></div>'
     + '<div class="actions-row">'+(edit ? '<button class="btn btn-danger btn-sm" data-action="eliminar-gasto" data-id="'+e.id+'">Eliminar</button>' : '')+'<span class="sp"></span><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-gasto" data-id="'+(edit?e.id:"")+'">Guardar</button></div>'
     + '</div></div>';
   var fotoEl = document.getElementById("g-foto");
-  fotoEl.addEventListener("change", function(){ var f = fotoEl.files && fotoEl.files[0]; if(!f) return; comprimirImagen(f).then(function(url){ var img = document.getElementById("g-foto-prev"); img.src = url; img.style.display = ""; img.dataset.nueva = "1"; }).catch(function(){ document.getElementById("g-error").textContent = "No se pudo leer la foto."; }); });
+  fotoEl.addEventListener("change", function(){ var f = fotoEl.files && fotoEl.files[0]; if(!f) return; comprimirImagen(f, 1600).then(function(url){ abrirRecorte(url); }).catch(function(){ document.getElementById("g-error").textContent = "No se pudo leer la foto."; }); });
   document.getElementById("g-kardex").addEventListener("change", function(ev){ document.getElementById("g-kardex-campos").style.display = ev.target.checked ? "" : "none"; });
   setTimeout(function(){ var el = document.getElementById(edit ? "g-monto" : "g-desc"); if(el) el.focus(); }, 50);
 }
-function comprimirImagen(file){
+var RECORTE = { base:null, img:null, canvas:null, esc:1, sel:null, origen:null, leyendo:false };
+function abrirRecorte(dataUrl){
+  var root = document.getElementById("recorte-root");
+  root.innerHTML = '<div class="overlay" style="z-index:55;"><div class="modal wide" data-stop="1"><h2>Comprobante</h2><p class="kard-sub" style="margin-bottom:8px;">Arrastre un rectángulo sobre la foto: "Recortar" se queda con esa parte; "Leer monto" lee el total dentro del rectángulo (o de toda la foto si no marca nada).</p>'
+    + '<div class="rec-wrap"><canvas id="rec-canvas"></canvas></div><div class="pin-error" id="rec-msg" style="color:var(--ink-soft);"></div><div class="rec-chips" id="rec-opciones"></div>'
+    + '<div class="actions-row"><button class="btn" data-action="rec-cancelar">Cancelar</button><span class="sp"></span><button class="btn" data-action="rec-recortar">Recortar</button><button class="btn" data-action="rec-leer">Leer monto</button><button class="btn btn-primary" data-action="rec-usar">Usar esta foto</button></div></div></div>';
+  recCargar(dataUrl);
+}
+function recCargar(dataUrl){
+  var img = new Image(); img.onload = function(){
+    RECORTE.base = dataUrl; RECORTE.img = img; var c = document.getElementById("rec-canvas"); if(!c) return;
+    var maxW = Math.max(240, Math.min(760, (c.parentElement.clientWidth||760) - 12)), esc = Math.min(maxW/img.width, 420/img.height, 1);
+    c.width = Math.round(img.width*esc); c.height = Math.round(img.height*esc); RECORTE.canvas = c; RECORTE.esc = esc; RECORTE.sel = null; recDibujar();
+    if(!c.dataset.ev){ c.dataset.ev = "1";
+      c.addEventListener("pointerdown", function(e){ var r = c.getBoundingClientRect(); var kx = c.width/r.width, ky = c.height/r.height; RECORTE.origen = { x:(e.clientX-r.left)*kx, y:(e.clientY-r.top)*ky }; RECORTE.sel = { x:RECORTE.origen.x, y:RECORTE.origen.y, w:0, h:0 }; c.setPointerCapture(e.pointerId); e.preventDefault(); });
+      c.addEventListener("pointermove", function(e){ if(!RECORTE.origen) return; var r = c.getBoundingClientRect(); var kx = c.width/r.width, ky = c.height/r.height; var x = Math.max(0, Math.min(c.width, (e.clientX-r.left)*kx)), y = Math.max(0, Math.min(c.height, (e.clientY-r.top)*ky)); RECORTE.sel = { x:Math.min(x, RECORTE.origen.x), y:Math.min(y, RECORTE.origen.y), w:Math.abs(x-RECORTE.origen.x), h:Math.abs(y-RECORTE.origen.y) }; recDibujar(); });
+      var fin = function(){ RECORTE.origen = null; if(RECORTE.sel && (RECORTE.sel.w < 12 || RECORTE.sel.h < 12)) RECORTE.sel = null; recDibujar(); };
+      c.addEventListener("pointerup", fin); c.addEventListener("pointercancel", fin);
+    }
+  }; img.src = dataUrl;
+}
+function recDibujar(){
+  var c = RECORTE.canvas, ctx = c.getContext("2d"); ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(RECORTE.img, 0, 0, c.width, c.height);
+  var sl = RECORTE.sel; if(!sl) return;
+  ctx.fillStyle = "rgba(9,45,88,.45)"; ctx.fillRect(0,0,c.width,sl.y); ctx.fillRect(0,sl.y+sl.h,c.width,c.height-sl.y-sl.h); ctx.fillRect(0,sl.y,sl.x,sl.h); ctx.fillRect(sl.x+sl.w,sl.y,c.width-sl.x-sl.w,sl.h);
+  ctx.strokeStyle = "#f76204"; ctx.lineWidth = 2; ctx.strokeRect(sl.x+1, sl.y+1, sl.w-2, sl.h-2);
+  ctx.fillStyle = "#f76204"; [[sl.x,sl.y],[sl.x+sl.w,sl.y],[sl.x,sl.y+sl.h],[sl.x+sl.w,sl.y+sl.h]].forEach(function(q){ ctx.fillRect(q[0]-4, q[1]-4, 8, 8); });
+}
+function recRegion(paraOcr){
+  var img = RECORTE.img, sl = RECORTE.sel, e = RECORTE.esc; var sx = sl ? sl.x/e : 0, sy = sl ? sl.y/e : 0, sw = sl ? sl.w/e : img.width, sh = sl ? sl.h/e : img.height;
+  var k = paraOcr ? Math.min(3, Math.max(1, 1500/sw)) : Math.min(1, 1400/sw); var c = document.createElement("canvas"); c.width = Math.round(sw*k); c.height = Math.round(sh*k); var ctx = c.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  if(paraOcr){ var d = ctx.getImageData(0,0,c.width,c.height), px = d.data; for(var i=0;i<px.length;i+=4){ var g = 0.3*px[i]+0.59*px[i+1]+0.11*px[i+2]; g = (g-128)*1.35+128; g = g < 0 ? 0 : g > 255 ? 255 : g; px[i] = px[i+1] = px[i+2] = g; } ctx.putImageData(d, 0, 0); return c.toDataURL("image/png"); }
+  return c.toDataURL("image/jpeg", 0.8);
+}
+function cargarTesseract(){ if(window.Tesseract) return Promise.resolve(); return new Promise(function(res, rej){ var sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); }); }
+function interpretarTexto(txt){
+  var lineas = String(txt||"").split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+  function nums(l){ var out = [], re = /\d{1,3}(?:[.,]\d{3})+[.,]\d{2}|\d+[.,]\d{2}/g, m; while((m = re.exec(l))){ var t = m[0]; var dec = t.slice(-3); var ent = t.slice(0,-3).replace(/[.,]/g,""); var n = parseFloat(ent+"."+dec.slice(1)); if(isFinite(n) && n > 0 && n < 1000000) out.push(n); } return out; }
+  var cand = [];
+  lineas.forEach(function(l){ var clave = /TOTAL|IMPORTE|PAGAR|SOLES|MONTO|S\s*\/|S0LES/i.test(l) && !/SUB\s*-?\s*TOTAL|IGV|GRAVAD|INAFEC|EXONER|OP\.|DESCUENTO|VUELTO|RECIBIDO|EFECTIVO/i.test(l); nums(l).forEach(function(n){ cand.push({ n:n, k:clave ? 1 : 0 }); }); });
+  cand.sort(function(a,b){ return (b.k-a.k) || (b.n-a.n); });
+  var vistos = {}, montos = []; cand.forEach(function(c){ var key = c.n.toFixed(2); if(!vistos[key]){ vistos[key] = 1; montos.push(c.n); } });
+  var fecha = null, mf = String(txt||"").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if(mf){ var dd = Number(mf[1]), mm = Number(mf[2]), aa = Number(mf[3]); if(aa < 100) aa += 2000; if(dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12 && aa >= 2020 && aa <= 2100) fecha = aa+"-"+pad(mm)+"-"+pad(dd); }
+  var proveedor = null; lineas.slice(0, 5).some(function(l){ var letras = (l.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]/g)||[]).length, digitos = (l.match(/\d/g)||[]).length; if(letras >= 5 && digitos <= 2 && l.length <= 40 && !/BOLETA|FACTURA|RUC|TELEF|CEL|AV\.|JR\.|CALLE/i.test(l)){ proveedor = l.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9 .&-]/g, "").trim(); return true; } return false; });
+  return { montos:montos.slice(0, 4), fecha:fecha, proveedor:proveedor };
+}
+function recLeer(){
+  if(RECORTE.leyendo) return; RECORTE.leyendo = true; var msg = document.getElementById("rec-msg"), ops = document.getElementById("rec-opciones"); ops.innerHTML = ""; msg.textContent = "Preparando la lectura (la primera vez descarga el módulo)…";
+  var imgOcr = recRegion(true);
+  cargarTesseract().then(function(){ return Tesseract.recognize(imgOcr, "spa", { logger:function(m){ if(m.status==="recognizing text") msg.textContent = "Leyendo… "+Math.round(m.progress*100)+" %"; else if(/loading|download/i.test(m.status)) msg.textContent = "Descargando el módulo de lectura…"; } }); })
+  .then(function(r){ RECORTE.leyendo = false; var R = interpretarTexto(r.data.text); RECORTE.resultado = R;
+    if(!R.montos.length){ msg.textContent = "No encontré un monto. Marque un rectángulo más ajustado sobre el total e intente de nuevo."; return; }
+    msg.textContent = (R.montos.length===1 ? "Encontré este monto:" : "¿Cuál es el total?")+(R.fecha ? " · fecha "+fechaDisplay(R.fecha) : "")+(R.proveedor ? " · "+R.proveedor : "");
+    ops.innerHTML = R.montos.map(function(n){ return '<button class="btn btn-sm'+(n===R.montos[0]?' btn-primary':'')+'" data-action="rec-monto" data-val="'+n+'">'+fmt(n)+'</button>'; }).join("");
+  }).catch(function(e){ RECORTE.leyendo = false; console.error(e); msg.textContent = "No se pudo leer. Revise su internet (la primera vez necesita descargar el módulo) e intente otra vez."; });
+}
+function recAplicarMonto(n){
+  var R = RECORTE.resultado || {}; var m = document.getElementById("g-monto"); if(m) m.value = r2(n);
+  var fe = document.getElementById("g-fecha"); if(fe && R.fecha && diasEntre(R.fecha, todayISO()) >= 0 && diasEntre(R.fecha, todayISO()) <= 90) fe.value = R.fecha;
+  var de = document.getElementById("g-desc"); if(de && !de.value.trim() && R.proveedor) de.value = R.proveedor;
+  recUsar(); toast("Monto leído: "+fmt(n)+(R.fecha ? " · fecha "+fechaDisplay(R.fecha) : ""));
+}
+function recUsar(){
+  var url = RECORTE.sel && RECORTE.sel.w > 12 ? RECORTE.base : RECORTE.base; var img = document.getElementById("g-foto-prev"); if(img){ img.src = url; img.style.display = ""; img.dataset.nueva = "1"; }
+  document.getElementById("recorte-root").innerHTML = "";
+}
+function comprimirImagen(file, maxPx){
   return new Promise(function(res, rej){
     var fr = new FileReader();
     fr.onload = function(){ var img = new Image(); img.onload = function(){
-      var max = 1000, w = img.width, h = img.height; if(w > max || h > max){ var k = max/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
+      var max = maxPx || 1000, w = img.width, h = img.height; if(w > max || h > max){ var k = max/Math.max(w,h); w = Math.round(w*k); h = Math.round(h*k); }
       var c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
       var url = c.toDataURL("image/jpeg", 0.72);
       if(url.length > 650000) url = c.toDataURL("image/jpeg", 0.5);
@@ -1602,6 +1674,11 @@ document.addEventListener("click", function(ev){
   if(action==="nuevo-gasto-kardex"){ abrirFormGasto(null); var ck = document.getElementById("g-kardex"); if(ck){ ck.checked = true; document.getElementById("g-kardex-campos").style.display = ""; var pr = document.getElementById("g-prod"); if(pr) pr.focus(); } return; }
   if(action==="editar-gasto"){ abrirFormGasto(S.egresos[id]); return; }
   if(action==="g-metodo"){ document.querySelectorAll("#g-metodo .pay-opt").forEach(function(b){ b.classList.toggle("on", b===t); }); return; }
+  if(action==="rec-cancelar"){ document.getElementById("recorte-root").innerHTML = ""; return; }
+  if(action==="rec-recortar"){ if(!RECORTE.sel){ document.getElementById("rec-msg").textContent = "Primero marque el rectángulo a recortar."; return; } recCargar(recRegion(false)); return; }
+  if(action==="rec-leer"){ recLeer(); return; }
+  if(action==="rec-usar"){ recUsar(); return; }
+  if(action==="rec-monto"){ recAplicarMonto(num(val)); return; }
   if(action==="g-quitar-foto"){ var img = document.getElementById("g-foto-prev"); if(img){ img.src = ""; img.style.display = "none"; } t.remove(); return; }
   if(action==="guardar-gasto"){ guardarGasto(id || ""); return; }
   if(action==="eliminar-gasto"){ eliminarGasto(id, false); return; }

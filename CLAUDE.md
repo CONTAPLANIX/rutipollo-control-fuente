@@ -28,6 +28,9 @@
   marcador de vendedores en la pared (`VIVO.marcador`), cielo real por hora (`CIELO_CLAVES`, sol/luna/nubes/estrellas).
 - C13: los vendedores usan CAMIÓN (no moto): `dibujarMoto` dibuja un camión de reparto con el nombre; vitrina a la izquierda con hasta 5
   productos reales (`tipoProducto` elige el dibujo por palabra clave: pollo, pechuga, pierna, alita, huevo, menudencia) y kilos vendidos hoy.
+- C14/C15: campanita de caja y voz natural (`mejorVoz`); foto del comprobante con recorte (`abrirRecorte`, canvas con rectángulo) y lectura del
+  monto con Tesseract.js 5.1.1 (cdnjs, carga diferida al tocar "Leer monto", idioma `spa`, datos desde tessdata.projectnaptha.com);
+  `interpretarTexto` prioriza cifras en líneas con TOTAL/IMPORTE/S/ y excluye SUBTOTAL/IGV; también saca fecha y proveedor.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
