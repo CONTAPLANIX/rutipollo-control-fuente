@@ -291,7 +291,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C13";
+var APP_VERSION = "18 oct · C14";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -908,7 +908,7 @@ function celebrar(texto, tipo){
   FIESTA.banner = { texto:texto, t:0, vida:4.5 };
   var colores = ["#f76204","#2a78d6","#1baf7a","#eda100","#e34948","#6250d6","#ffffff"];
   for(var i=0;i<(tipo==="monedas" ? 70 : 110); i++){ FIESTA.particulas.push({ x:ISO_W*(0.15+Math.random()*0.7), y:-20-Math.random()*120, vx:(Math.random()-0.5)*60, vy:40+Math.random()*90, rot:Math.random()*6.28, vr:(Math.random()-0.5)*6, t:0, vida:3+Math.random()*1.5, moneda:(tipo==="monedas") || Math.random() < 0.25, color:colores[i%colores.length], w:6+Math.random()*6, h:4+Math.random()*8 }); }
-  if(VIVO.sonido){ sonar(); setTimeout(sonar, 160); setTimeout(sonar, 320); }
+  if(VIVO.sonido) setTimeout(function(){ sonar("fiesta"); }, 150);
 }
 function dibujarCelebraciones(ctx, dt){
   if(!FIESTA.particulas.length && !FIESTA.banner) return;
@@ -1125,15 +1125,38 @@ function vivoRefrescar(){
   return true;
 }
 function vivoAudio(){ try{ if(!VIVO.audio) VIVO.audio = new (window.AudioContext || window.webkitAudioContext)(); if(VIVO.audio.state === "suspended") VIVO.audio.resume(); }catch(e){} return VIVO.audio; }
-function sonar(){ var ac = vivoAudio(); if(!ac) return; try{ [[880,0],[1318,0.13]].forEach(function(n){ var o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.value = n[0]; g.gain.setValueAtTime(0.0001, ac.currentTime+n[1]); g.gain.exponentialRampToValueAtTime(0.25, ac.currentTime+n[1]+0.02); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+n[1]+0.35); o.connect(g); g.connect(ac.destination); o.start(ac.currentTime+n[1]); o.stop(ac.currentTime+n[1]+0.4); }); }catch(e){} }
-function decir(txt){ try{ if(!window.speechSynthesis) return; var u = new SpeechSynthesisUtterance(txt); u.lang = "es-PE"; u.rate = 1; var voces = speechSynthesis.getVoices().filter(function(v){ return /^es/i.test(v.lang); }); var pe = voces.find(function(v){ return /PE|MX|US/i.test(v.lang); }) || voces[0]; if(pe) u.voice = pe; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){} }
-function solesTxt(n){ n = Math.round(num(n)); return n+" sol"+(n===1?"":"es"); }
+function tono(ac, f, t0, dur, tipo, vol){ var o = ac.createOscillator(), g = ac.createGain(); o.type = tipo||"sine"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol||0.2, t0+0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur); o.connect(g); g.connect(VIVO.master); o.start(t0); o.stop(t0+dur+0.05); }
+function sonar(tipo){
+  var ac = vivoAudio(); if(!ac) return;
+  try{
+    if(!VIVO.master){ VIVO.master = ac.createGain(); VIVO.master.gain.value = 0.55; var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7000; VIVO.master.connect(lp); lp.connect(ac.destination); }
+    var t = ac.currentTime;
+    if(tipo==="fiesta"){ [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){ tono(ac, f, t+i*0.12, 0.6, "triangle", 0.16); tono(ac, f*2, t+i*0.12, 0.35, "sine", 0.05); }); return; }
+    // campanita de caja registradora: golpe corto + campana con sus armonicos, que se apaga despacio
+    var buf = ac.createBuffer(1, Math.round(ac.sampleRate*0.05), ac.sampleRate), d = buf.getChannelData(0); for(var i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2.5);
+    var ruido = ac.createBufferSource(); ruido.buffer = buf; var gr = ac.createGain(); gr.gain.value = 0.09; var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 2500; ruido.connect(hp); hp.connect(gr); gr.connect(VIVO.master); ruido.start(t);
+    tono(ac, 1318.5, t+0.015, 1.1, "sine", 0.2); tono(ac, 2637, t+0.015, 0.55, "sine", 0.07); tono(ac, 3520, t+0.015, 0.3, "sine", 0.03);
+    tono(ac, 1975.5, t+0.17, 1.0, "sine", 0.15); tono(ac, 3951, t+0.17, 0.4, "sine", 0.04);
+  }catch(e){}
+}
+function mejorVoz(){
+  var v = (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(function(x){ return /^es/i.test(x.lang); });
+  function puntos(x){ var n = x.name||""; return (/natural|neural|online/i.test(n) ? 5 : 0) + (/google/i.test(n) ? 3 : 0) + (/es-(PE|MX|US|419|CO|AR|CL)/i.test(x.lang) ? 2 : (/es-ES/i.test(x.lang) ? 1 : 0)) + (/dalia|sabina|elena|camila|paloma|helena|laura|lucia|mia|andrea|renata|alonso|jorge|raul/i.test(n) ? 1 : 0); }
+  v.sort(function(a, b){ return puntos(b) - puntos(a); }); return v[0] || null;
+}
+if(window.speechSynthesis){ try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = function(){ speechSynthesis.getVoices(); }; }catch(e){} }
+function decir(txt){
+  try{ if(!window.speechSynthesis) return; var u = new SpeechSynthesisUtterance(txt); var voz = mejorVoz(); if(voz){ u.voice = voz; u.lang = voz.lang; } else u.lang = "es-PE";
+    u.rate = 0.95; u.pitch = 1.0; u.volume = 1; speechSynthesis.cancel(); setTimeout(function(){ speechSynthesis.speak(u); }, 420); }catch(e){}
+}
+function solesTxt(n){ n = num(n); var e = Math.floor(n), c = Math.round((n-e)*100); if(c >= 100){ e++; c = 0; } return e+" sol"+(e===1?"":"es")+(c ? " con "+c : ""); }
+function nombreVoz(n){ return String(n||"").trim().toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
 function anunciar(ev){
   if(!VIVO.sonido || ev.silencio) return; sonar();
-  if(ev.tipo==="venta"){ var v = ev.v; decir((estaPendiente(v) ? "Venta a crédito de " : "Venta de ")+solesTxt(v.total)+(v.vendedor ? " por "+v.vendedor : "")+(v.cliente ? ", cliente "+v.cliente : "")); }
-  else if(ev.tipo==="cobro") decir("Cobro de deuda de "+solesTxt(ev.monto)+(ev.cliente ? " de "+ev.cliente : ""));
-  else if(ev.tipo==="compra") decir("Llegó una compra de "+kgTxt(ev.kg)+" kilos de "+String(ev.producto||"").toLowerCase());
-  else if(ev.tipo==="merma") decir("Merma de "+kgTxt(ev.kg)+" kilos de "+String(ev.producto||"").toLowerCase());
+  if(ev.tipo==="venta"){ var v = ev.v; decir((estaPendiente(v) ? "Nueva venta a crédito de " : "Nueva venta de ")+solesTxt(v.total)+"."+(v.cliente ? " Cliente "+nombreVoz(v.cliente)+"." : "")+(v.vendedor ? " Atendió "+nombreVoz(v.vendedor)+"." : "")); }
+  else if(ev.tipo==="cobro") decir("Cobro de deuda: "+solesTxt(ev.monto)+(ev.cliente ? ", de "+nombreVoz(ev.cliente) : "")+".");
+  else if(ev.tipo==="compra") decir("Llegó la compra: "+kgTxt(ev.kg)+" kilos de "+String(ev.producto||"").toLowerCase()+".");
+  else if(ev.tipo==="merma") decir("Se registró una merma de "+kgTxt(ev.kg)+" kilos de "+String(ev.producto||"").toLowerCase()+".");
 }
 function vivoDemo(){
   var v = { id:"demo", cliente:"Cliente de ejemplo", vendedor:(VIVO.motos[0]||{}).nombre||"", total:148.5, items:[{ producto:"POLLO ENTERO", kg:15, cantidad:5, precio:9.9 }], tipoPago:"contado", metodoPago:"efectivo", pagado:true, serie:"X", correlativo:0, creadoEn:Date.now() };
