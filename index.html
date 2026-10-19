@@ -297,7 +297,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C23";
+var APP_VERSION = "18 oct · C25";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -368,7 +368,7 @@ function estaPendiente(v){ return v.tipoPago==="credito" && saldoPendiente(v) > 
 
 // ---------- estado ----------
 var hoy = todayISO(), hp = parseFecha(hoy);
-var CONFIG_BASE = { alertas:{ deudaCliente:500, stockMin:100, cajaDif:20 }, metas:{ venta:0, utilidad:0 } };
+var CONFIG_BASE = { alertas:{ deudaCliente:500, stockMin:100, cajaDif:20 }, metas:{ venta:0, utilidad:0 }, recurrentes:[] };
 var S = { db:null, user:null, usuarios:[], ventas:{}, egresos:{}, productos:[], categorias:CATEGORIAS_BASE.slice(), config:JSON.parse(JSON.stringify(CONFIG_BASE)), cierres:{}, nombres:[], aniosCargados:{}, unsubs:[], servicio:{}, listo:false, online:navigator.onLine };
 var UI = { vista:"tablero", per:{ tipo:"mes", anio:hp.anio, mes:hp.mes, dia:hoy, desde:hoy.slice(0,8)+"01", hasta:hoy },
   utilBase: lsGet("utilBase","cobrado"), gastosCat:"", gastosBuscar:"", verEliminados:false, kardexProd:"", cajaDia:hoy, cajaReal:"", cajaNota:"",
@@ -1514,7 +1514,8 @@ function renderGastos(){
   }).join("");
   return '<h1 class="section-title">Gastos</h1><p class="section-sub">Egresos registrados a mano. Las compras de mercadería también entran al Kardex.</p>'
     + periodoBarHtml()
-    + '<div class="toolbar"><button class="btn btn-primary" data-action="nuevo-gasto">+ Registrar gasto</button>'
+    + recurrentesHtml()
+    + '<div class="toolbar"><button class="btn btn-primary" data-action="nuevo-gasto">+ Registrar gasto</button><button class="btn" data-action="importar-archivo">Importar SIRE / honorarios</button>'
     + '<label class="sel-wrap"><span>Categoría</span><select id="gastos-cat"><option value="">Todas</option>'+cats.map(function(c){ return '<option value="'+escapeHtml(c)+'"'+(UI.gastosCat===c?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join("")+'</select></label>'
     + '<input type="search" id="gastos-buscar" placeholder="Buscar…" value="'+escapeHtml(UI.gastosBuscar)+'" style="max-width:200px;">'
     + '<span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="toggle-eliminados">'+(UI.verEliminados ? '← Ver gastos' : '🗑 Ver eliminados')+'</button></div>'
@@ -1754,10 +1755,143 @@ function renderAjustes(){
     + '<div class="cols-2"><div class="card"><h2>Categorías de gastos</h2><div class="cat-list">'+S.categorias.map(function(c, i){ return '<div class="cat-item"><span>'+escapeHtml(c)+'</span><button class="btn btn-sm btn-ghost" data-action="cat-subir" data-val="'+i+'" title="Subir">▲</button><button class="btn btn-sm btn-ghost" data-action="cat-renombrar" data-val="'+i+'">Renombrar</button><button class="btn btn-sm btn-ghost" data-action="cat-quitar" data-val="'+i+'" style="color:var(--danger);">Quitar</button></div>'; }).join("")+'</div>'
     + '<div class="toolbar" style="margin-top:12px;"><input type="text" id="cat-nueva" placeholder="Nueva categoría" maxlength="40" style="flex:1;"><button class="btn" data-action="cat-agregar">Agregar</button></div><p class="kard-sub">Quitar una categoría no borra los gastos ya registrados con ella.</p></div>'
     + '<div><div class="card"><h2>Metas del mes</h2><p class="kard-sub" style="margin-bottom:8px;">Se muestran en el Tablero cuando el periodo es un mes. Deje 0 para no usar.</p><div class="grid-2"><div class="field"><label for="meta-venta">Meta de ventas (S/)</label><input type="number" id="meta-venta" min="0" step="1" value="'+(S.config.metas.venta||"")+'"></div><div class="field"><label for="meta-utilidad">Meta de utilidad (S/)</label><input type="number" id="meta-utilidad" min="0" step="1" value="'+(S.config.metas.utilidad||"")+'"></div></div><div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary btn-sm" data-action="guardar-metas">Guardar metas</button></div></div>'
+    + recurrentesAjustesHtml()
     + '<div class="card"><h2>Instalar como aplicación</h2><p class="kard-sub" style="margin-bottom:8px;">Queda con su propio ícono y abre a pantalla completa, en la computadora y en el celular.</p>'+(window.__instalar ? '<button class="btn btn-primary" data-action="instalar-app">Instalar en este equipo</button>' : (/iphone|ipad/i.test(navigator.userAgent) ? '<p>En iPhone: toque el botón <strong>Compartir</strong> de Safari y luego <strong>"Agregar a inicio"</strong>.</p>' : (window.matchMedia("(display-mode: standalone)").matches ? '<p class="note ok">Ya está instalada en este equipo.</p>' : '<p>En Chrome: menú <strong>⋮</strong> → <strong>"Instalar aplicación"</strong> (o "Agregar a la pantalla de inicio" en el celular).</p>')))+'</div>'
     + '<div class="card"><h2>Mi cuenta</h2><p>Entraste como <strong>'+escapeHtml(S.user.nombre)+'</strong> (administradora). Es el mismo usuario y contraseña de la app '+CFG.app+'.</p>'
     + '<div class="actions-row" style="justify-content:flex-start;"><button class="btn" data-action="cambiar-pass">Cambiar mi contraseña</button><button class="btn btn-ghost" data-action="cerrar-sesion">Cerrar sesión</button></div></div>'
     + '<div class="card"><h2>Acerca de</h2><p class="kard-sub">'+CFG.titulo+' · versión '+APP_VERSION+'<br>Los ingresos se leen en vivo de las notas de la app '+CFG.app+' (misma base de datos). Los gastos, ajustes de kardex y cierres de caja se guardan en esa misma base y solo los ven las administradoras.<br>Sistema JEED · WhatsApp 918 817 528</p></div></div></div>';
+}
+// ---------- Importar compras del SIRE o recibos por honorarios desde el archivo que se descarga de SUNAT ----------
+var IMPORT = { filas:[], items:[], archivo:"" };
+function desxml(t){ return String(t).replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,"&"); }
+function leerZip(buf){
+  var dv = new DataView(buf), u8 = new Uint8Array(buf), eocd = -1;
+  for(var i = buf.byteLength-22; i >= Math.max(0, buf.byteLength-66000); i--){ if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; } }
+  if(eocd < 0) throw new Error("No es un archivo Excel válido.");
+  var n = dv.getUint16(eocd+10, true), pos = dv.getUint32(eocd+16, true), entradas = {};
+  for(var k=0;k<n;k++){ if(dv.getUint32(pos, true) !== 0x02014b50) break; var metodo = dv.getUint16(pos+10, true), csize = dv.getUint32(pos+20, true), nlen = dv.getUint16(pos+28, true), elen = dv.getUint16(pos+30, true), clen = dv.getUint16(pos+32, true), lho = dv.getUint32(pos+42, true);
+    entradas[new TextDecoder().decode(u8.subarray(pos+46, pos+46+nlen))] = { metodo:metodo, csize:csize, lho:lho }; pos += 46 + nlen + elen + clen; }
+  return function(nombre){ var e = entradas[nombre]; if(!e) return Promise.resolve(null); var ln = dv.getUint16(e.lho+26, true), le = dv.getUint16(e.lho+28, true); var ini = e.lho + 30 + ln + le; var datos = u8.slice(ini, ini + e.csize);
+    if(e.metodo === 0) return Promise.resolve(new TextDecoder().decode(datos)); var ds = new DecompressionStream("deflate-raw"); var w = ds.writable.getWriter(); w.write(datos); w.close(); return new Response(ds.readable).text(); };
+}
+function colIndice(letras){ var n = 0; for(var i=0;i<letras.length;i++) n = n*26 + (letras.charCodeAt(i)-64); return n-1; }
+function leerXlsx(buf){
+  var get = leerZip(buf);
+  return Promise.all([get("xl/sharedStrings.xml"), get("xl/worksheets/sheet1.xml")]).then(function(r){
+    if(!r[1]) throw new Error("El Excel no tiene hoja de datos.");
+    var ss = []; if(r[0]){ var re = /<si>([\s\S]*?)<\/si>/g, m; while((m = re.exec(r[0]))){ var ts = [], re2 = /<t[^>]*>([\s\S]*?)<\/t>/g, m2; while((m2 = re2.exec(m[1]))) ts.push(m2[1]); ss.push(desxml(ts.join(""))); } }
+    var filas = [], reR = /<row[^>]*>([\s\S]*?)<\/row>/g, mr;
+    while((mr = reR.exec(r[1]))){ var fila = [], reC = /<c r="([A-Z]+)\d+"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, mc;
+      while((mc = reC.exec(mr[1]))){ var idx = colIndice(mc[1]), attrs = mc[2]||"", inner = mc[3]||""; var v = (inner.match(/<v>([\s\S]*?)<\/v>/)||[])[1], t = (inner.match(/<t[^>]*>([\s\S]*?)<\/t>/)||[])[1];
+        var val = t !== undefined ? desxml(t) : (v === undefined ? "" : (/t="s"/.test(attrs) ? (ss[Number(v)]||"") : v)); fila[idx] = val; }
+      filas.push(fila); }
+    return filas;
+  });
+}
+function leerCsv(texto){
+  var lineas = texto.replace(/\r/g,"").split("\n").filter(function(l){ return l.trim(); }); if(!lineas.length) return [];
+  var cand = ["|",";","\t",","], mejor = cand[0], max = -1; cand.forEach(function(d){ var c = lineas.slice(0, 5).reduce(function(a,l){ return a + l.split(d).length; }, 0); if(c > max){ max = c; mejor = d; } });
+  return lineas.map(function(l){ var out = [], cur = "", q = false; for(var i=0;i<l.length;i++){ var ch = l[i]; if(ch === '"'){ q = !q; } else if(ch === mejor && !q){ out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out.map(function(x){ return x.trim(); }); });
+}
+function fechaDeCelda(v){
+  v = String(v||"").trim(); if(!v) return null;
+  var m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(m) return m[3]+"-"+pad(m[2])+"-"+pad(m[1]);
+  m = v.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return m[1]+"-"+m[2]+"-"+m[3];
+  var n = Number(v); if(isFinite(n) && n > 20000 && n < 80000){ var d = new Date(Date.UTC(1899, 11, 30) + n*86400000); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
+  return null;
+}
+function numDeCelda(v){ v = String(v||"").trim().replace(/\s/g,""); if(!v) return 0; if(/,\d{2}$/.test(v) && !/\.\d{2}$/.test(v)) v = v.replace(/\./g,"").replace(",","."); else v = v.replace(/,/g,""); var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function interpretarTabla(filas){
+  var normal = function(x){ return normalizar(x).replace(/[^A-Z0-9 ]/g," "); };
+  var ih = -1; for(var i=0;i<Math.min(filas.length, 30);i++){ var txt = (filas[i]||[]).map(normal).join(" | "); if(/FECHA/.test(txt) && (/SERIE|COMPROBANTE|NUMERO|NRO|TOTAL|IMPORTE|MONTO/.test(txt))){ ih = i; break; } }
+  if(ih < 0) throw new Error("No encontré la fila de títulos (debe tener 'Fecha' y 'Serie' o 'Total').");
+  var cab = (filas[ih]||[]).map(normal); function col(res, desde, evitar){ for(var r=0;r<res.length;r++){ for(var c = desde||0; c < cab.length; c++){ if((evitar||[]).indexOf(c) < 0 && res[r].test(cab[c]||"")) return c; } } return -1; }
+  var cFecha = col([/FECHA.*EMIS/, /^FECHA/]), cSerie = col([/SERIE/]), cNum = col([/NRO.*(CP|DOC|INICIAL)/, /NUMERO|NRO|N MERO/]), cTipo = col([/TIPO.*(CP|COMPROBANTE|DOC)/]);
+  var cRucEmpresa = (cab[0]||"")==="RUC" ? 0 : -1; var cRuc = col([/NRO.*DOC.*IDENT/, /DOC.*IDENT/, /RUC.*(EMISOR|PROVEEDOR)/, /RUC/], 0, [cRucEmpresa]);
+  var cNom = col([/APELLIDOS/, /EMISOR|PROVEEDOR/, /RAZON SOCIAL|RAZ N SOCIAL|DENOMINACION/, /NOMBRE/], 0, [cRucEmpresa >= 0 ? 1 : -1, cRuc].concat(cab.map(function(h, i){ return /RUC|DOC|IDENT/.test(h) ? i : -1; })));
+  var cTotal = col([/TOTAL CP|IMPORTE TOTAL|^TOTAL/, /TOTAL|IMPORTE|MONTO|NETO/]); var cMon = col([/MONEDA/]), cTc = col([/TIPO.*CAMBIO/]);
+  if(cFecha < 0 || cTotal < 0) throw new Error("No encontré las columnas de fecha o total.");
+  var items = [];
+  filas.slice(ih+1).forEach(function(f){ if(!f) return; var fecha = fechaDeCelda(f[cFecha]); var total = numDeCelda(f[cTotal]); if(!fecha || !(total > 0)) return;
+    var mon = cMon >= 0 ? normal(f[cMon]) : "", tc = cTc >= 0 ? numDeCelda(f[cTc]) : 0; if(/USD|DOLAR|D LAR/.test(mon) && tc > 0) total = r2(total*tc);
+    var serie = cSerie >= 0 ? String(f[cSerie]||"").trim() : "", num = (cNum >= 0 && cNum !== cSerie) ? String(f[cNum]||"").trim().replace(/^0+(?=\d)/,"") : "";
+    var comp = /-/.test(serie) ? serie.replace(/\s/g,"").replace(/-0+(?=\d)/,"-") : ((serie && num) ? (serie+"-"+num) : (serie||num||""));
+    items.push({ fecha:fecha, serie:serie, numero:num, comprobante:comp, tipo:cTipo >= 0 ? String(f[cTipo]||"").trim() : "", ruc:cRuc >= 0 ? String(f[cRuc]||"").replace(/\D/g,"") : "", proveedor:cNom >= 0 ? String(f[cNom]||"").trim() : "", total:r2(total) }); });
+  return items;
+}
+function categoriaSugerida(nombre, tipo, ruc, comp){
+  var n = normalizar(nombre+" "+tipo);
+  if(/^10/.test(String(ruc||"")) && /^E/i.test(String(comp||""))) return S.categorias.indexOf("Honorarios") >= 0 ? "Honorarios" : "Honorarios";
+  if(/HONORARIO|RECIBO POR H|R\.?H\.?E|\bRH\b/.test(n)) return S.categorias.indexOf("Honorarios") >= 0 ? "Honorarios" : "Sueldos";
+  if(/AVICOLA|AV COLA|POLLO|GRANJA|\bAVES\b|AVIC/.test(n)) return "Compra de pollo";
+  if(/GRIFO|COMBUST|PETROL|PRIMAX|REPSOL|GASOLIN|GLP|ESTACION DE SERV/.test(n)) return "Transporte / combustible";
+  if(/LUZ DEL SUR|ELECTR|SEDAPAL|AGUA|CALIDDA|CLARO|MOVISTAR|ENTEL|BITEL|TELEF|INTERNET|CABLE/.test(n)) return "Servicios";
+  if(/ALQUILER|ARRENDAM|INMOBILIARIA/.test(n)) return "Alquiler";
+  return "Insumos";
+}
+function claveComprobante(ruc, comp){ return (String(ruc||"").replace(/\D/g,"")+"|"+String(comp||"").toUpperCase().replace(/\s/g,"").replace(/-0+(?=\d)/,"-")); }
+function abrirImportar(){
+  IMPORT = { filas:[], items:[], archivo:"" };
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2>Importar compras del SIRE o recibos por honorarios</h2>'
+    + '<p class="kard-sub" style="margin-bottom:10px;">Suba el archivo que descarga del portal de SUNAT (Excel .xlsx o texto .txt/.csv de la propuesta del SIRE de compras, o la lista de recibos por honorarios). La página reconoce fecha, comprobante, proveedor y total, sugiere la categoría y marca los que ya están registrados.</p>'
+    + '<div class="grid-2"><div class="field"><label for="imp-archivo">Archivo</label><input type="file" id="imp-archivo" accept=".xlsx,.csv,.txt,.xls"></div><div class="field"><label for="imp-metodo">Forma de pago para todos</label><select id="imp-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="banco"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div></div>'
+    + '<div class="pin-error" id="imp-msg" style="color:var(--ink-soft);"></div><div id="imp-tabla" class="tbl-wrap" style="max-height:50vh;overflow:auto;"></div>'
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><span class="sp"></span><button class="btn btn-primary" data-action="imp-importar" id="imp-boton" disabled>Importar</button></div></div></div>';
+  document.getElementById("imp-archivo").addEventListener("change", function(ev){ var f = ev.target.files && ev.target.files[0]; if(f) importarLeer(f); });
+}
+function importarLeer(f){
+  var msg = document.getElementById("imp-msg"); msg.textContent = "Leyendo "+f.name+"…"; IMPORT.archivo = f.name;
+  var esXlsx = /\.xlsx$/i.test(f.name) || f.type.indexOf("spreadsheetml") > -1;
+  var lectura = esXlsx ? f.arrayBuffer().then(leerXlsx) : f.text().then(function(t){ return leerCsv(t); });
+  lectura.then(function(filas){ IMPORT.filas = filas; var items = interpretarTabla(filas); if(!items.length) throw new Error("No encontré filas con fecha y total.");
+    var existentes = {}, porFechaMonto = {}; Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado) return; if(e.comprobante) existentes[claveComprobante(e.proveedor && e.proveedor.ruc, e.comprobante)] = e; porFechaMonto[e.fecha+"|"+r2(e.monto).toFixed(2)] = e; });
+    var vistos = {};
+    IMPORT.items = items.map(function(it, i){ var k = claveComprobante(it.ruc, it.comprobante); var dup = it.comprobante && existentes[k] ? "registrado" : (porFechaMonto[it.fecha+"|"+it.total.toFixed(2)] ? "posible" : (vistos[k] && it.comprobante ? "repetido" : "")); if(it.comprobante) vistos[k] = 1;
+      return Object.assign({ i:i, cat:categoriaSugerida(it.proveedor, it.tipo, it.ruc, it.comprobante), dup:dup, sel:!dup }, it); });
+    var n = IMPORT.items.length, ya = IMPORT.items.filter(function(x){ return x.dup==="registrado"; }).length;
+    msg.textContent = n+" comprobante"+(n===1?"":"s")+" en el archivo"+(ya ? " · "+ya+" ya registrado"+(ya===1?"":"s") : "")+". Revise la categoría y desmarque lo que no quiera importar.";
+    document.getElementById("imp-tabla").innerHTML = '<table><thead><tr><th></th><th>Fecha</th><th>Comprobante</th><th>Proveedor</th><th class="num">Total</th><th>Categoría</th><th></th></tr></thead><tbody>'
+      + IMPORT.items.map(function(x){ return '<tr'+(x.dup==="registrado" ? ' style="opacity:.55"' : '')+'><td><input type="checkbox" class="imp-sel" data-i="'+x.i+'"'+(x.sel?' checked':'')+(x.dup==="registrado"?' disabled':'')+'></td><td style="white-space:nowrap;">'+fechaDisplay(x.fecha)+'</td><td>'+escapeHtml(x.comprobante||"—")+'</td><td>'+escapeHtml(x.proveedor||"")+(x.ruc ? '<div class="kard-sub">RUC '+escapeHtml(x.ruc)+'</div>' : '')+'</td><td class="num">'+n2(x.total)+'</td><td><select class="imp-cat" data-i="'+x.i+'">'+S.categorias.concat(S.categorias.indexOf(x.cat)<0?[x.cat]:[]).map(function(c){ return '<option'+(c===x.cat?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join("")+'</select></td><td class="kard-sub">'+(x.dup==="registrado" ? "ya registrado" : x.dup==="posible" ? "⚠ posible duplicado (misma fecha y monto)" : x.dup==="repetido" ? "⚠ repetido en el archivo" : "")+'</td></tr>'; }).join("")+'</tbody></table>';
+    document.getElementById("imp-boton").disabled = false;
+  }).catch(function(e){ console.error(e); msg.textContent = "No se pudo leer: "+e.message; document.getElementById("imp-tabla").innerHTML = ""; });
+}
+function importarGuardar(){
+  var metodo = document.getElementById("imp-metodo").value, sel = {}; document.querySelectorAll(".imp-sel").forEach(function(c){ sel[c.getAttribute("data-i")] = c.checked && !c.disabled; });
+  var cats = {}; document.querySelectorAll(".imp-cat").forEach(function(c){ cats[c.getAttribute("data-i")] = c.value; });
+  var lista = IMPORT.items.filter(function(x){ return sel[x.i]; }); if(!lista.length){ toast("No hay comprobantes marcados"); return; }
+  var nuevasCat = []; lista.forEach(function(x){ var c = cats[x.i]||x.cat; if(c && S.categorias.indexOf(c) < 0 && nuevasCat.indexOf(c) < 0) nuevasCat.push(c); }); if(nuevasCat.length){ S.categorias = S.categorias.concat(nuevasCat); S.db.doc("control/config").set({ categorias:S.categorias }, { merge:true }).catch(function(){}); }
+  var lote = S.db.batch(), ahora = Date.now();
+  lista.forEach(function(x, j){ var fp = parseFecha(x.fecha), id = genId("eg"); var obj = { tipo:"gasto", origen:"importado", archivo:IMPORT.archivo, fecha:x.fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:cats[x.i]||x.cat, descripcion:(x.proveedor||"Compra")+(x.comprobante ? " · "+x.comprobante : ""), monto:x.total, metodo:metodo, comprobante:x.comprobante||null, proveedor:x.ruc ? { ruc:x.ruc, razonSocial:x.proveedor||"" } : null, kardex:null, foto:null, registradoPor:S.user.nombre, creadoEn:ahora+j, actualizadoEn:ahora, eliminado:false };
+    S.egresos[id] = Object.assign({}, obj, { id:id }); lote.set(S.db.collection("egresos").doc(id), obj); });
+  lote.commit().then(function(){ toast(lista.length+" gasto"+(lista.length===1?"":"s")+" importado"+(lista.length===1?"":"s")); }).catch(function(e){ console.error(e); toast("No se pudo guardar todo: revisa tu internet"); });
+  closeOverlay(); render();
+}
+// ---------- Gastos fijos del mes (recurrentes) ----------
+function recurrentesPendientes(){
+  var hoyF = todayISO(), mesRef = hoyF.slice(0,7), lista = S.config.recurrentes||[];
+  var hechos = {}; Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(!e.eliminado && e.recurrenteId && String(e.fecha).slice(0,7)===mesRef) hechos[e.recurrenteId] = e; });
+  return lista.map(function(rc){ return { rc:rc, hecho:hechos[rc.id]||null }; });
+}
+function registrarRecurrente(id){
+  var rc = (S.config.recurrentes||[]).find(function(x){ return x.id===id; }); if(!rc) return; var hoyF = todayISO(), a = Number(hoyF.slice(0,4)), m = Number(hoyF.slice(5,7));
+  var fecha = hoyF.slice(0,7)+"-"+pad(Math.min(Number(rc.dia)||1, ultimoDia(a, m))); var fp = parseFecha(fecha), eid = genId("eg");
+  var obj = { tipo:"gasto", origen:"recurrente", recurrenteId:rc.id, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:rc.categoria||"Otros", descripcion:rc.descripcion, monto:r2(rc.monto), metodo:rc.metodo||"banco", kardex:null, foto:null, registradoPor:S.user.nombre, creadoEn:Date.now(), actualizadoEn:Date.now(), eliminado:false };
+  S.egresos[eid] = Object.assign({}, obj, { id:eid }); S.db.collection("egresos").doc(eid).set(obj).then(function(){ toast("Registrado: "+rc.descripcion); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+}
+function recurrentesHtml(){
+  var lista = recurrentesPendientes(); if(!lista.length) return '';
+  var pend = lista.filter(function(x){ return !x.hecho; });
+  return '<div class="card"><h2>Gastos fijos de '+MESES[Number(todayISO().slice(5,7))-1]+' <span class="kard-sub">'+(pend.length ? pend.length+' por registrar' : 'todos registrados')+' · se definen en Ajustes</span></h2><ul class="ledger">'
+    + lista.map(function(x){ var rc = x.rc; return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+'</span></span><span class="lv">'+fmt(rc.monto)+' '+(x.hecho ? '<span class="tag efectivo">✓ registrado '+fechaCorta(x.hecho.fecha)+'</span>' : '<button class="btn btn-sm btn-primary" data-action="rec-registrar" data-id="'+rc.id+'">Registrar</button>')+'</span></li>'; }).join("")
+    + '</ul>'+(pend.length > 1 ? '<div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="rec-registrar-todos">Registrar todos los pendientes</button></div>' : '')+'</div>';
+}
+function recurrentesAjustesHtml(){
+  var lista = S.config.recurrentes||[];
+  return '<div class="card"><h2>Gastos fijos del mes</h2><p class="kard-sub" style="margin-bottom:8px;">Planilla, alquiler, luz, agua, préstamos… Se definen una vez y cada mes aparecen en Gastos para registrarlos con un toque.</p>'
+    + (lista.length ? '<ul class="ledger">'+lista.map(function(rc){ return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+' · '+metodoLabel(rc.metodo)+'</span></span><span class="lv">'+fmt(rc.monto)+' <button class="btn btn-sm btn-ghost" data-action="rec-quitar" data-id="'+rc.id+'" style="color:var(--danger);">Quitar</button></span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay gastos fijos.</p>')
+    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="rec-desc">Descripción</label><input type="text" id="rec-desc" maxlength="60" placeholder="Ej. Planilla · Juan Pérez"></div><div class="field"><label for="rec-cat">Categoría</label><select id="rec-cat">'+S.categorias.map(function(c){ return '<option'+(c==="Sueldos"?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join("")+'</select></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="rec-monto">Monto mensual (S/)</label><input type="number" id="rec-monto" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label for="rec-dia">Día del mes en que se paga</label><input type="number" id="rec-dia" min="1" max="31" value="1"></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="rec-metodo">Forma de pago</label><select id="rec-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="banco"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div><div class="field" style="justify-content:flex-end;"><button class="btn btn-primary" data-action="rec-agregar">Agregar gasto fijo</button></div></div></div>';
 }
 function guardarConfig(parte, obj){ S.config[parte] = Object.assign({}, S.config[parte], obj); var d = {}; d[parte] = S.config[parte]; d.actualizadoEn = Date.now(); d.por = S.user.nombre; S.db.doc("control/config").set(d, { merge:true }).then(function(){ toast("Guardado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
 function guardarCategorias(){ S.db.doc("control/config").set({ categorias:S.categorias, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
@@ -1965,6 +2099,7 @@ function conectarDatos(){
     if(d && d.alertas) Object.keys(CONFIG_BASE.alertas).forEach(function(k){ if(d.alertas[k] !== undefined) S.config.alertas[k] = num(d.alertas[k]); });
     if(d && d.metas) Object.keys(CONFIG_BASE.metas).forEach(function(k){ if(d.metas[k] !== undefined) S.config.metas[k] = num(d.metas[k]); });
     if(d && d.rutaHoy) S.config.rutaHoy = d.rutaHoy;
+    if(d && Array.isArray(d.recurrentes)) S.config.recurrentes = d.recurrentes;
     if(!document.querySelector(".overlay")) render(); }, function(){}));
   S.unsubs.push(db.collection("cierres").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.cierres[ch.doc.id]; else S.cierres[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(UI.vista==="caja" && !document.querySelector(".overlay")) render(); }, function(){}));
   db.collection("productos").get().then(function(snap){ S.productos = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id:d.id }); }); }).catch(function(){});
@@ -2030,6 +2165,12 @@ document.addEventListener("click", function(ev){
   if(action==="caja-ver"){ UI.cajaDia = val; UI.cajaReal = ""; UI.cajaNota = ""; render(); return; }
   if(action==="guardar-cierre"){ guardarCierre(); return; }
   if(action==="guardar-metas"){ guardarConfig("metas", { venta:r2(document.getElementById("meta-venta").value), utilidad:r2(document.getElementById("meta-utilidad").value) }); return; }
+  if(action==="importar-archivo"){ abrirImportar(); return; }
+  if(action==="imp-importar"){ importarGuardar(); return; }
+  if(action==="rec-registrar"){ registrarRecurrente(id); render(); return; }
+  if(action==="rec-registrar-todos"){ recurrentesPendientes().filter(function(x){ return !x.hecho; }).forEach(function(x){ registrarRecurrente(x.rc.id); }); render(); return; }
+  if(action==="rec-agregar"){ var rd = document.getElementById("rec-desc").value.trim(), rm = r2(document.getElementById("rec-monto").value), rdia = Math.max(1, Math.min(31, Number(document.getElementById("rec-dia").value)||1)); if(!rd || !(rm > 0)){ toast("Escriba la descripción y el monto"); return; } var lista = (S.config.recurrentes||[]).slice(); lista.push({ id:genId("rc"), descripcion:rd, categoria:document.getElementById("rec-cat").value, monto:rm, dia:rdia, metodo:document.getElementById("rec-metodo").value }); S.config.recurrentes = lista; S.db.doc("control/config").set({ recurrentes:lista, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Gasto fijo agregado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); return; }
+  if(action==="rec-quitar"){ if(!confirm("¿Quitar este gasto fijo? Los gastos ya registrados no se borran.")) return; var l2 = (S.config.recurrentes||[]).filter(function(x){ return x.id!==id; }); S.config.recurrentes = l2; S.db.doc("control/config").set({ recurrentes:l2, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){}); render(); return; }
   if(action==="guardar-alertas"){ guardarConfig("alertas", { cajaDif:r2(document.getElementById("al-caja").value), deudaCliente:r2(document.getElementById("al-deuda").value), stockMin:r2(document.getElementById("al-stock").value) }); return; }
   if(action==="instalar-app"){ if(window.__instalar){ window.__instalar.prompt(); window.__instalar.userChoice.then(function(){ window.__instalar = null; render(); }).catch(function(){}); } return; }
   if(action==="vivo-sonido"){ VIVO.sonido = !VIVO.sonido; lsSet("sonido", VIVO.sonido); if(VIVO.sonido){ vivoAudio(); sonar(); } t.textContent = VIVO.sonido ? "🔊 Sonido: sí" : "🔇 Sonido: no"; return; }

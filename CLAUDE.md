@@ -40,6 +40,10 @@
   reflejado con PMREM (`crearEntorno`), luces en candela (PointLight 14 de noche / 2 de día; SpotLight del camión 35), sombra del sol con
   radius/bias, `MeshPhysicalMaterial` con clearcoat (camión, mostrador) y transmission (vitrina), sombras de contacto (`sombraContacto`).
   Mascotas: `MASCOTAS` (Otto, Ramón, Duko) con `moverMascota`/`dibujarMascota`/`vivo3dMascota`. La carpeta `capturas/` no se sube.
+- C25: "Importar SIRE / honorarios" en Gastos: lee .xlsx (zip + DecompressionStream, sin librerías), .csv/.txt (separador autodetectado),
+  detecta columnas por título (fecha, serie/número, RUC y nombre del proveedor evitando las de la propia empresa, total, moneda/TC),
+  sugiere categoría (`categoriaSugerida`), marca duplicados por RUC+comprobante o fecha+monto, guarda egresos con `origen:"importado"`,
+  `comprobante`, `proveedor{ruc,razonSocial}`. Gastos fijos del mes: `control/config.recurrentes[]`, se registran con `recurrenteId`.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
