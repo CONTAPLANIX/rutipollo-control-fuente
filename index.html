@@ -291,7 +291,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C12";
+var APP_VERSION = "18 oct · C13";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -812,14 +812,44 @@ function dibujarPersona(ctx, p){
   if(p.nombre){ etiqueta(ctx, b.x, b.y-44, p.nombre, "rgba(9,45,88,.85)", "#fff"); }
   if(p.bubble){ etiqueta(ctx, b.x, b.y-(p.nombre?62:46), p.bubble, p.bubbleColor||"#fff", p.bubbleColor ? "#fff" : "#092d58"); }
 }
-function dibujarMoto(ctx, m){
-  var b = isoP(m.x, m.y, 0);
-  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+2, 16, 6, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#2b2b3a"; ctx.beginPath(); ctx.arc(b.x-11, b.y-2, 5, 0, Math.PI*2); ctx.arc(b.x+11, b.y-2, 5, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = m.color; ctx.beginPath(); ctx.roundRect(b.x-13, b.y-12, 26, 9, 4); ctx.fill();
-  ctx.fillStyle = "#f3f3f3"; ctx.beginPath(); ctx.roundRect(b.x+1, b.y-22, 12, 11, 2); ctx.fill(); // caja térmica
-  ctx.strokeStyle = PAL.mostr; ctx.lineWidth = 1.5; ctx.strokeRect(b.x+1, b.y-22, 12, 11);
-  if(m.fuera){ etiqueta(ctx, b.x, b.y-30, m.nombre+" · en ruta", "rgba(247,98,4,.9)", "#1c0f03"); } else etiqueta(ctx, b.x, b.y-30, m.nombre, "rgba(9,45,88,.85)", "#fff");
+function dibujarMoto(ctx, m){ // camion de reparto del vendedor
+  var b = isoP(m.x, m.y, 0), bob = m.fuera ? Math.sin(Date.now()/70)*1.3 : 0, noche = esNoche();
+  ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+3, 40, 10, 0, 0, Math.PI*2); ctx.fill();
+  ctx.save(); ctx.translate(0, bob);
+  ctx.fillStyle = "#f4f6f8"; ctx.beginPath(); ctx.roundRect(b.x-38, b.y-42, 50, 34, 4); ctx.fill();
+  ctx.fillStyle = "#dfe5ec"; ctx.fillRect(b.x-38, b.y-42, 50, 4);
+  ctx.fillStyle = PAL.mostr; ctx.fillRect(b.x-38, b.y-14, 50, 5);
+  ctx.font = "400 9px 'Anton', 'Arial Narrow', sans-serif"; ctx.fillStyle = PAL.mostr; ctx.textAlign = "center"; ctx.fillText("RICO POLLO", b.x-13, b.y-31);
+  ctx.font = "700 8px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#092d58"; ctx.fillText(String(m.nombre).slice(0,10), b.x-13, b.y-20);
+  ctx.fillStyle = m.color; ctx.beginPath(); ctx.roundRect(b.x+12, b.y-32, 24, 24, 4); ctx.fill();
+  ctx.fillStyle = "#cfe6f7"; ctx.beginPath(); ctx.roundRect(b.x+15, b.y-29, 17, 10, 2); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fillRect(b.x+12, b.y-14, 24, 6);
+  ctx.fillStyle = noche ? "#fff2a8" : "#ffe08a"; ctx.beginPath(); ctx.arc(b.x+34, b.y-12, 2.5, 0, Math.PI*2); ctx.fill();
+  if(noche || m.fuera){ var gl = ctx.createRadialGradient(b.x+36, b.y-12, 1, b.x+36, b.y-12, 34); gl.addColorStop(0, "rgba(255,240,170,.5)"); gl.addColorStop(1, "rgba(255,240,170,0)"); ctx.fillStyle = gl; ctx.beginPath(); ctx.moveTo(b.x+36, b.y-12); ctx.lineTo(b.x+72, b.y-28); ctx.lineTo(b.x+72, b.y+4); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = "#23232e"; [-26,-8,24].forEach(function(o){ ctx.beginPath(); ctx.arc(b.x+o, b.y-3, 6.5, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = "#9aa3ad"; [-26,-8,24].forEach(function(o){ ctx.beginPath(); ctx.arc(b.x+o, b.y-3, 2.8, 0, Math.PI*2); ctx.fill(); });
+  ctx.restore();
+  if(m.fuera) etiqueta(ctx, b.x, b.y-50, m.nombre+" · en ruta", "rgba(247,98,4,.9)", "#1c0f03");
+}
+function tipoProducto(n){ n = normalizar(n); if(/HUEVO/.test(n)) return "huevo"; if(/PECHUGA|FILETE/.test(n)) return "pechuga"; if(/PIERNA|MUSLO|ENCUENTRO/.test(n)) return "pierna"; if(/\bALA|ALITA/.test(n)) return "alita"; if(/MENUD|MOLLEJA|HIGADO|PATA|CORAZ|CUELLO|SANGRE/.test(n)) return "menudencia"; if(/POLLO|GALLINA|PAVO/.test(n)) return "pollo"; return "caja"; }
+function dibujarProducto(ctx, tipo, px, py, esc){
+  ctx.save(); ctx.translate(px, py); ctx.scale(esc, esc);
+  if(tipo==="pollo"){ ctx.fillStyle = "#f3cfa6"; ctx.beginPath(); ctx.ellipse(0,-6,13,8,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle = "#e9b98a"; ctx.beginPath(); ctx.ellipse(-7,-1,5,3.5,-0.5,0,Math.PI*2); ctx.ellipse(7,-1,5,3.5,0.5,0,Math.PI*2); ctx.fill(); }
+  else if(tipo==="pechuga"){ ctx.fillStyle = "#f4a9a0"; ctx.beginPath(); ctx.roundRect(-12,-9,24,11,5); ctx.fill(); ctx.fillStyle = "#f8c4bd"; ctx.beginPath(); ctx.roundRect(-9,-8,12,5,3); ctx.fill(); }
+  else if(tipo==="pierna"){ ctx.fillStyle = "#e7a47c"; ctx.beginPath(); ctx.ellipse(-3,-5,9,7,0.4,0,Math.PI*2); ctx.fill(); ctx.strokeStyle = "#f6e7d2"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(4,-9); ctx.lineTo(12,-14); ctx.stroke(); }
+  else if(tipo==="alita"){ ctx.strokeStyle = "#e7a47c"; ctx.lineWidth = 4; ctx.lineCap = "round"; [-7,3].forEach(function(o){ ctx.beginPath(); ctx.moveTo(o-5,-3); ctx.lineTo(o,-9); ctx.lineTo(o+5,-3); ctx.stroke(); }); }
+  else if(tipo==="huevo"){ ctx.fillStyle = "#b98357"; ctx.beginPath(); ctx.roundRect(-13,-6,26,8,2); ctx.fill(); ctx.fillStyle = "#fbf3e4"; [-8,0,8].forEach(function(o){ ctx.beginPath(); ctx.ellipse(o,-7,3.5,4.5,0,0,Math.PI*2); ctx.fill(); }); }
+  else if(tipo==="menudencia"){ ctx.fillStyle = "#b5453b"; ctx.beginPath(); ctx.ellipse(0,-5,10,5,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle = "#d2615a"; ctx.beginPath(); ctx.ellipse(-3,-7,5,3,0,0,Math.PI*2); ctx.fill(); }
+  else { ctx.fillStyle = "#f0b35a"; ctx.fillRect(-9,-12,18,12); ctx.strokeStyle = "#b97f2f"; ctx.lineWidth = 1; ctx.strokeRect(-9,-12,18,12); }
+  ctx.restore();
+}
+function dibujarVitrina(ctx){
+  caja3d(ctx, 0.2, 3.4, 1, 4.3, 26, "#e8eef5", "#c9d4e2", "#aebccd");
+  losange(ctx, 0.28, 3.48, 0.84, 4.14, "rgba(170,215,245,.55)", 26);
+  textoIso(ctx, 0.7, 3.25, 44, "VITRINA", "#1f4f7a", 9, true);
+  (VIVO.productosHoy||[]).forEach(function(pr, i){ var q = isoP(0.7, 3.85 + i*0.82, 27); dibujarProducto(ctx, pr.tipo, q.x, q.y, 0.78);
+    ctx.font = "700 7px 'IBM Plex Sans', sans-serif"; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.strokeText(pr.corto, q.x, q.y+9); ctx.fillStyle = "#092d58"; ctx.fillText(pr.corto, q.x, q.y+9);
+    if(pr.kg > 0){ var t = kgTxt(pr.kg)+(pr.unidad==="kg" ? " kg hoy" : " hoy"); ctx.strokeText(t, q.x, q.y+17); ctx.fillStyle = "#1d7a3e"; ctx.fillText(t, q.x, q.y+17); } });
 }
 function dibujarCamion(ctx, c){
   var b = isoP(c.x, c.y, 0);
@@ -946,8 +976,8 @@ function vivoDibujar(dt){
   items.push({ d:4.5+4+1, draw:function(){ caja3d(ctx, 3.6, 4, 2.6, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); textoIso(ctx, 4.9, 4.8, 8, "MOSTRADOR", "#fff", 9, true); } });
   // caja registradora
   items.push({ d:6.3+4+1.01, draw:function(){ caja3d(ctx, 6.3, 4, 0.8, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); caja3d(ctx, 6.4, 4.1, 0.6, 0.6, 12, "#3b4a5c", "#2c3847", "#1f2834", 24); var cp = isoP(6.7, 4.4, 40); ctx.fillStyle = "#7CFC98"; ctx.fillRect(cp.x-8, cp.y-6, 16, 7); if(VIVO.cajaBrillo > 0){ ctx.fillStyle = "rgba(245,194,66,"+Math.min(1,VIVO.cajaBrillo)+")"; ctx.beginPath(); ctx.arc(cp.x, cp.y-10, 14, 0, Math.PI*2); ctx.fill(); } } });
-  // estante lateral
-  items.push({ d:11+3, draw:function(){ caja3d(ctx, 10.6, 1, 1.2, 2.4, 50, PAL.metal, PAL.metalL, PAL.metalR); for(var r=0;r<3;r++){ losange(ctx, 10.7, 1.1, 1, 2.2, "#f8e4c8", 16*r+14); } } });
+  // vitrina de productos (pared izquierda)
+  items.push({ d:1.2+7.7, draw:function(){ dibujarVitrina(ctx); } });
   // puerta de entrada (marco en el frente)
   items.push({ d:4+8+1, draw:function(){ caja3d(ctx, 0, 7.8, 3.9, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); caja3d(ctx, 5.6, 7.8, ISO.cols-5.6, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); var e = isoP(4.75, 8.1, 34); ctx.fillStyle = "#1d7a3e"; ctx.beginPath(); ctx.roundRect(e.x-30, e.y-10, 60, 16, 4); ctx.fill(); ctx.font = "700 10px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText(VIVO.abierto ? "ABIERTO" : "CERRADO", e.x, e.y+2); } });
   // personas, motos, camiones
@@ -1017,7 +1047,7 @@ function ambiente(dt){
 }
 function vivoReconstruirMotos(){
   var nombres = (S.nombres||[]).slice(0,5); if(!nombres.length) nombres = [S.user.nombre];
-  VIVO.motos = nombres.map(function(n, i){ var px = 7.2 + i*1.25; return { nombre:n, x:px, px:px, y:9.4, color:COLORES_ROPA[(i+2)%COLORES_ROPA.length], fuera:false, t:0, dur:0 }; });
+  VIVO.motos = nombres.map(function(n, i){ var px = 3.6 + i*2.0; return { nombre:n, x:px, px:px, y:9.45, color:COLORES_ROPA[(i+2)%COLORES_ROPA.length], fuera:false, t:0, dur:0 }; });
 }
 function vivoEstadoHoy(){
   var f = todayISO(), r = { tipo:"hoy", desde:f, hasta:f }; return { f:f, ing:calcIngresos(r), eg:calcEgresos(r) };
@@ -1040,6 +1070,10 @@ function vivoSincronizar(){
       if(tot > maxAnt) maxAnt = tot; VIVO.cola.push(ev); });
     VIVO.vendidoAnt = vendidoHoy; VIVO.maxAnt = maxHoy;
   }
+  var kgP = {}, undP = {}; notas.forEach(function(v){ (v.items||[]).forEach(function(it){ if(!it.producto) return; var k = String(it.producto).toUpperCase().trim(); if(num(it.kg) > 0) kgP[k] = (kgP[k]||0) + num(it.kg); else undP[k] = (undP[k]||0) + num(it.cantidad); }); });
+  var nombresP = Object.keys(kgP).concat(Object.keys(undP).filter(function(k){ return !kgP[k]; })).sort(function(a,b){ return (kgP[b]||undP[b]||0) - (kgP[a]||undP[a]||0); });
+  (S.productos||[]).forEach(function(pr){ var k = String(pr.nombre||"").toUpperCase().trim(); if(k && nombresP.indexOf(k) < 0) nombresP.push(k); });
+  VIVO.productosHoy = nombresP.slice(0, 5).map(function(k){ var esKg = !!kgP[k] || !undP[k]; return { nombre:k, corto:(k.length > 10 ? k.slice(0,9)+"." : k), kg:(kgP[k]||undP[k]||0), unidad:(esKg ? "kg" : "und"), tipo:tipoProducto(k) }; });
   var porVend = {}; notas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; var g = porVend[k] || (porVend[k] = { nombre:k, vendido:0, notas:0 }); g.vendido += num(v.total); g.notas++; });
   VIVO.marcador = Object.keys(porVend).map(function(k){ return porVend[k]; }).sort(function(a,b){ return b.vendido-a.vendido; });
   Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.tipoPago!=="credito") return; var ab = montoAbonado(v); var ant = VIVO.abonos[id]; VIVO.abonos[id] = ab; if(!primera && ant !== undefined && ab > ant + 0.009){ var ult = abonosEfectivos(v)[abonosEfectivos(v).length-1]; if(ult && String(ult.fecha||"").slice(0,10)===f) VIVO.cola.push({ tipo:"cobro", monto:ab-ant, cliente:v.cliente }); } });
