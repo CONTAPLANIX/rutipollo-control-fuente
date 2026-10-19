@@ -153,6 +153,12 @@
   .live-row .ld{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
   .live-row .la{ text-align:right; } .live-row .la .amt{ font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:15px; display:block; }
   .live-row.new{ background:linear-gradient(90deg, var(--ok-bg), transparent 60%); margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:6px; }
+  .vivo-grid{ display:grid; grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr); gap:16px; align-items:start; }
+  @media (max-width:980px){ .vivo-grid{ grid-template-columns:1fr; } }
+  .vivo-card{ padding:10px; }
+  #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
+  .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .vivo-card:fullscreen{ background:var(--paper); padding:16px; display:flex; flex-direction:column; justify-content:center; }
   .card{ background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--r-md); padding:16px; box-shadow:var(--shadow-sm); margin-bottom:16px; min-width:0; }
   .card h2{ font-size:16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .card h2 .kard-sub{ font-family:"IBM Plex Sans",system-ui,sans-serif; text-transform:none; letter-spacing:0; font-weight:400; }
@@ -224,7 +230,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C2";
+var APP_VERSION = "18 oct · C3";
 var CFG = { nombre:"Rico Pollo Dissur", titulo:"Rutipollo Control", dominio:"rutipollo.app", prefijo:"lrc", app:"Rutipollo" };
 var CATEGORIAS_BASE = ["Compra de pollo","Transporte / combustible","Sueldos","Alquiler","Servicios","Insumos","Otros"];
 var METODOS = ["efectivo","banco","yape","plin"];
@@ -432,6 +438,7 @@ function graficoPeriodo(r, ing, eg){
 // ---------- render general ----------
 function render(){
   if(!S.user){ renderGate(); return; }
+  if(UI.vista==="envivo" && window.__vistaAnt==="envivo" && document.getElementById("vivo-canvas")){ vivoRefrescar(); return; }
   var root = document.getElementById("app");
   var navs = [["tablero","📊","Tablero"],["envivo","🟢","En vivo"],["gastos","💸","Gastos"],["kardex","📦","Kardex"],["caja","💵","Caja"],["ajustes","⚙️","Ajustes"]];
   function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+n[2]+'</span></button>'; }).join(""); }
@@ -444,6 +451,7 @@ function render(){
     + '<main class="main">'+(servicioAvisoHtml())+cont+'</main></div>'
     + '<nav class="tabbar">'+navHtml("tab-btn")+'</nav>';
   if(window.__vistaAnt !== UI.vista) window.scrollTo(0, 0); window.__vistaAnt = UI.vista;
+  if(UI.vista==="envivo") vivoMontar();
 }
 function servicioAvisoHtml(){ var sv = S.servicio || {}; if(sv.mensaje && sv.activo !== false) return '<div class="note warn">'+escapeHtml(sv.mensaje)+'</div>'; return ""; }
 
@@ -520,42 +528,259 @@ function detallePorDiaHtml(r, ing, eg){
     + '<tr class="tot"><td>Total</td><td class="num">'+tot.notas+'</td><td class="num">'+n2(tot.vendido)+'</td><td class="num">'+n2(tot.cobrado)+'</td><td class="num">'+n2(tot.egresos)+'</td><td class="num '+(totU<-0.009?'negv':'pos')+'">'+n2(totU)+'</td></tr></tbody></table></div></div>';
 }
 
-// ---------- EN VIVO (lo que pasa hoy, se actualiza solo) ----------
+// ---------- TIENDA EN VIVO: el local en isométrico, con movimiento según las notas reales ----------
 function horaDisplay(creadoEn){ if(!creadoEn) return ""; var d = new Date(Number(creadoEn)); var h = d.getHours(), m = d.getMinutes(); var h12 = h%12 || 12; return h12+":"+pad(m)+(h>=12?" pm":" am"); }
 function mapsLink(u){ return u && u.lat ? "https://maps.google.com/?q="+u.lat+","+u.lon : ""; }
 function resumenItems(items){ return (items||[]).map(function(it){ var kg = num(it.kg) > 0 ? kgTxt(it.kg)+" kg" : kgTxt(it.cantidad)+" und"; return kg+" "+String(it.producto||"").toLowerCase(); }).join(", "); }
-function renderEnVivo(){
-  var f = todayISO(), r = { tipo:"hoy", desde:f, hasta:f }, ing = calcIngresos(r), eg = calcEgresos(r);
-  var notas = ing.lista.slice().sort(function(a,b){ return num(b.creadoEn)-num(a.creadoEn); });
-  var hace5 = Date.now() - 5*60000;
-  var porV = {}; notas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; var g = porV[k] || (porV[k] = { notas:0, vendido:0, cobrado:0, pendiente:0, ultima:0, kg:0 }); g.notas++; g.vendido += num(v.total); if(estaPendiente(v)) g.pendiente += saldoPendiente(v); g.ultima = Math.max(g.ultima, num(v.creadoEn)); (v.items||[]).forEach(function(it){ g.kg += num(it.kg) > 0 ? num(it.kg) : 0; }); });
-  notas.forEach(function(v){ var g = porV[v.vendedor||"(sin vendedor)"]; if(v.tipoPago!=="credito" && estaPagado(v)) g.cobrado += num(v.total); else if(v.tipoPago==="credito") g.cobrado += abonosEfectivos(v).filter(function(a){ return String(a.fecha||"").slice(0,10)===f; }).reduce(function(s,a){ return s+num(a.monto); }, 0); });
-  var kgProd = {}; notas.forEach(function(v){ (v.items||[]).forEach(function(it){ if(!it.producto) return; var k = String(it.producto).toUpperCase(); var o = kgProd[k] || (kgProd[k] = { kg:0, und:0, soles:0 }); if(num(it.kg) > 0){ o.kg += num(it.kg); o.soles += num(it.kg)*num(it.precio); } else { o.und += num(it.cantidad); o.soles += num(it.cantidad)*num(it.precio); } }); });
-  var prods = Object.keys(kgProd).map(function(k){ return { nombre:k, kg:kgProd[k].kg, und:kgProd[k].und, soles:kgProd[k].soles }; }).sort(function(a,b){ return b.soles-a.soles; });
-  var ultima = notas.length ? notas[0] : null;
-  var ahora = new Date();
-  return '<h1 class="section-title"><span class="live-dot"></span>Tienda en vivo</h1><p class="section-sub">Lo que está pasando hoy, '+diaSemana(f)+' '+fechaDisplay(f)+'. Se actualiza solo cuando un vendedor emite o cobra una nota. Última revisión '+pad(ahora.getHours())+':'+pad(ahora.getMinutes())+'.</p>'
-    + '<div class="eq" style="grid-template-columns:1fr auto 1fr auto 1fr;">'
-    + '<div class="eq-item ing"><span class="eq-k">Vendido hoy</span><span class="eq-v">'+fmt(ing.vendido)+'</span><span class="eq-s">'+ing.notas+' nota'+(ing.notas===1?'':'s')+(ultima ? ' · la última a las '+horaDisplay(ultima.creadoEn)+' ('+escapeHtml(ultima.vendedor||"")+')' : '')+'</span></div>'
-    + '<div class="eq-op"></div>'
-    + '<div class="eq-item"><span class="eq-k">Cobrado hoy</span><span class="eq-v" style="color:#8fe3ad;">'+fmt(ing.cobrado.total)+'</span><span class="eq-s">efectivo '+fmt(ing.cobrado.efectivo).replace("S/ ","")+' · banco '+fmt(ing.cobrado.banco).replace("S/ ","")+' · Yape '+fmt(ing.cobrado.yape).replace("S/ ","")+' · Plin '+fmt(ing.cobrado.plin).replace("S/ ","")+'</span></div>'
-    + '<div class="eq-op"></div>'
-    + '<div class="eq-item uti"><span class="eq-k">Queda por cobrar de hoy</span><span class="eq-v" style="color:#ff9c8f;">'+fmt(ing.porCobrar)+'</span><span class="eq-s">gastos de hoy '+fmt(eg.total)+' · caja estimada '+fmt(ing.cobrado.efectivo - eg.porMetodo.efectivo)+'</span></div>'
-    + '</div>'
-    + '<div class="cols-2">'
-    + '<div class="card"><h2>Notas de hoy <span class="kard-sub">las más recientes arriba</span></h2>'
-    + (notas.length ? notas.map(function(v){ var pend = estaPendiente(v); var pago = pend ? '<span class="tag" style="background:var(--danger-bg);color:var(--danger);">'+(montoAbonado(v)>0.009?'Abono parcial':'Pendiente')+'</span>' : (v.metodoPago==="mixto" ? '<span class="tag efectivo">Dos formas</span>' : tagMetodo(v.metodoPago)); var u = mapsLink(v.ubicacion);
-        return '<div class="live-row'+(num(v.creadoEn) > hace5 ? ' new' : '')+'"><div class="lh">'+horaDisplay(v.creadoEn)+'</div><div class="lw"><b>'+escapeHtml(v.cliente||"")+'</b> <span class="kard-sub">N° '+numNota(v)+' · '+escapeHtml(v.vendedor||"")+'</span><div class="ld">'+escapeHtml(resumenItems(v.items))+(u ? ' · <a href="'+u+'" target="_blank" rel="noopener">ver en el mapa</a>' : '')+'</div></div><div class="la"><span class="amt">'+fmt(v.total)+'</span>'+pago+'</div></div>'; }).join("")
-      : '<p class="empty">Todavía no hay notas hoy. Apenas un vendedor emita una, aparece aquí.</p>')
-    + '</div>'
-    + '<div><div class="card"><h2>Por vendedor</h2>'+(Object.keys(porV).length ? '<div class="tbl-wrap"><table><thead><tr><th>Vendedor</th><th class="num">Notas</th><th class="num">Vendido</th><th class="num">Cobrado</th><th class="num">Pendiente</th><th>Última</th></tr></thead><tbody>'
-        + Object.keys(porV).sort(function(a,b){ return porV[b].vendido-porV[a].vendido; }).map(function(k){ var g = porV[k]; return '<tr><td><strong>'+escapeHtml(k)+'</strong></td><td class="num">'+g.notas+'</td><td class="num">'+n2(g.vendido)+'</td><td class="num pos">'+n2(g.cobrado)+'</td><td class="num '+(g.pendiente>0.009?'negv':'')+'">'+n2(g.pendiente)+'</td><td class="kard-sub">'+horaDisplay(g.ultima)+'</td></tr>'; }).join("")+'</tbody></table></div>' : '<p class="empty">Sin ventas todavía.</p>')+'</div>'
-    + '<div class="card"><h2>Productos vendidos hoy</h2>'+(prods.length ? '<ul class="ledger">'+prods.map(function(p){ return '<li><span class="lk">'+escapeHtml(p.nombre.toLowerCase())+'</span><span class="lv">'+(p.kg?kgTxt(p.kg)+' kg':'')+(p.kg&&p.und?' + ':'')+(p.und?kgTxt(p.und)+' und':'')+' <span class="kard-sub">'+fmt(p.soles)+'</span></span></li>'; }).join("")+'</ul>' : '<p class="empty">Sin productos todavía.</p>')+'</div>'
-    + (eg.lista.length ? '<div class="card"><h2>Gastos de hoy <span class="mono">'+fmt(eg.total)+'</span></h2><ul class="ledger">'+eg.lista.map(function(e){ return '<li><span class="lk">'+escapeHtml(e.descripcion||e.categoria)+' <span class="kard-sub">'+escapeHtml(e.categoria||"")+'</span></span><span class="lv negv">'+fmt(e.monto)+'</span></li>'; }).join("")+'</ul></div>' : '')
-    + '</div></div>';
+function haceTxt(ms){ var s = Math.max(0, Math.round((Date.now()-ms)/1000)); if(s < 60) return "hace un momento"; var m = Math.round(s/60); if(m < 60) return "hace "+m+" min"; var h = Math.floor(m/60); return "hace "+h+" h "+(m%60)+" min"; }
+
+var VIVO = { canvas:null, ctx:null, raf:0, tAnt:0, vistos:null, abonos:{}, cola:[], personas:[], efectos:[], camiones:[], motos:[], trabajador:null, stockCajas:4, stockKg:0, feed:[], w:0, h:0, esc:1, ox:0, oy:0, ventilador:0, ultimaSpawn:0, primerMontaje:true, nombreLocal:"" };
+var ISO = { tw:64, th:32, cols:12, filas:9 };
+var ISO_W = 880, ISO_H = 500;
+var PAL = { piso1:"#e9dcc6", piso2:"#e1d2b8", calle:"#5d6572", vereda:"#b9b3a6", pared:"#f3ece0", paredL:"#d9cfbf", paredR:"#c7bba9", frio:"#8fc7e8", frioL:"#6fb0d8", frioR:"#5c9ac2", caja:"#c98b4b", cajaL:"#a86e36", cajaR:"#8c5a2b", mostr:"#f76204", mostrL:"#d14f02", mostrR:"#a83f02", metal:"#aeb6bf", metalL:"#8d96a0", metalR:"#6f7882", pollo:"#f6d7b0" };
+function isoP(x, y, z){ return { x:(x - y) * ISO.tw/2 + VIVO.ox, y:(x + y) * ISO.th/2 + VIVO.oy - (z||0) }; }
+function sombra(hex, f){ var n = parseInt(hex.slice(1),16), r = (n>>16)&255, g = (n>>8)&255, b = n&255; r = Math.max(0, Math.min(255, Math.round(r*f))); g = Math.max(0, Math.min(255, Math.round(g*f))); b = Math.max(0, Math.min(255, Math.round(b*f))); return "rgb("+r+","+g+","+b+")"; }
+function caja3d(ctx, x, y, dx, dy, h, cTop, cL, cR, z){
+  z = z||0; var a = isoP(x,y,z+h), b = isoP(x+dx,y,z+h), c = isoP(x+dx,y+dy,z+h), d = isoP(x,y+dy,z+h);
+  var c0 = isoP(x+dx,y+dy,z), d0 = isoP(x,y+dy,z), b0 = isoP(x+dx,y,z);
+  ctx.fillStyle = cL; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(c.x,c.y); ctx.lineTo(c0.x,c0.y); ctx.lineTo(d0.x,d0.y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = cR; ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(b.x,b.y); ctx.lineTo(b0.x,b0.y); ctx.lineTo(c0.x,c0.y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = cTop; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 1; ctx.stroke();
 }
-// En vivo: refresca la hora y el resaltado de "nuevas" cada minuto.
-setInterval(function(){ if(S.user && UI.vista==="envivo" && !document.querySelector(".overlay")) render(); }, 60000);
+function losange(ctx, x, y, dx, dy, color, z){ var a = isoP(x,y,z), b = isoP(x+dx,y,z), c = isoP(x+dx,y+dy,z), d = isoP(x,y+dy,z); ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath(); ctx.fill(); }
+function textoIso(ctx, x, y, z, txt, color, size, bold){ var p = isoP(x,y,z); ctx.font = (bold?"700 ":"600 ")+(size||11)+"px 'IBM Plex Sans', system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = color; ctx.fillText(txt, p.x, p.y); }
+function etiqueta(ctx, px, py, txt, fondo, color){ ctx.font = "600 11px 'IBM Plex Sans', system-ui, sans-serif"; var w = ctx.measureText(txt).width + 12; ctx.fillStyle = fondo; ctx.beginPath(); ctx.roundRect(px - w/2, py - 16, w, 18, 6); ctx.fill(); ctx.fillStyle = color; ctx.textAlign = "center"; ctx.fillText(txt, px, py - 3); }
+
+// Personas: caminan por puntos (en coordenadas de losetas).
+function nuevaPersona(opts){
+  var p = { x:opts.x, y:opts.y, ruta:(opts.ruta||[]).slice(), vel:opts.vel||1.6, color:opts.color||"#2f6fb3", piel:opts.piel||"#f1c9a5", pelo:opts.pelo||"#3a2a1a", paso:0, espera:0, bubble:null, bubbleColor:null, alTerminar:opts.alTerminar||null, acciones:opts.acciones||[], nombre:opts.nombre||"", bolsa:false, viva:true, mirando:1 };
+  VIVO.personas.push(p); return p;
+}
+function moverPersona(p, dt){
+  if(p.espera > 0){ p.espera -= dt; if(p.espera <= 0){ p.espera = 0; p.bubble = null; } return; }
+  if(!p.ruta.length){ if(p.acciones.length){ var a = p.acciones.shift(); if(a.espera){ p.espera = a.espera; p.bubble = a.bubble||null; p.bubbleColor = a.color||null; } if(a.fn) a.fn(p); if(a.ruta) p.ruta = a.ruta.slice(); return; } if(p.alTerminar){ var f = p.alTerminar; p.alTerminar = null; f(p); } return; }
+  var t = p.ruta[0], dx = t.x - p.x, dy = t.y - p.y, d = Math.sqrt(dx*dx+dy*dy);
+  if(d < 0.04){ p.x = t.x; p.y = t.y; p.ruta.shift(); return; }
+  var paso = Math.min(d, p.vel*dt); p.x += dx/d*paso; p.y += dy/d*paso; p.paso += paso*9; p.mirando = (dx - dy) >= 0 ? 1 : -1;
+}
+function dibujarPersona(ctx, p){
+  var b = isoP(p.x, p.y, 0), s = 1;
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.y, 9, 4, 0, 0, Math.PI*2); ctx.fill();
+  var osc = Math.sin(p.paso)*3, moviendo = p.ruta.length && !p.espera;
+  // piernas
+  ctx.strokeStyle = "#2b2b3a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(b.x-3, b.y-12); ctx.lineTo(b.x-3+(moviendo?osc:0), b.y-1); ctx.moveTo(b.x+3, b.y-12); ctx.lineTo(b.x+3-(moviendo?osc:0), b.y-1); ctx.stroke();
+  // cuerpo
+  ctx.fillStyle = p.color; ctx.beginPath(); ctx.roundRect(b.x-7, b.y-26, 14, 16, 5); ctx.fill();
+  // brazo / bolsa
+  if(p.bolsa){ ctx.fillStyle = "#f3f3f3"; ctx.beginPath(); ctx.roundRect(b.x+6*p.mirando-4, b.y-16, 8, 9, 2); ctx.fill(); ctx.strokeStyle = "#c33"; ctx.lineWidth = 1; ctx.strokeRect(b.x+6*p.mirando-4, b.y-16, 8, 9); }
+  // cabeza
+  ctx.fillStyle = p.piel; ctx.beginPath(); ctx.arc(b.x, b.y-32, 6.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.pelo; ctx.beginPath(); ctx.arc(b.x, b.y-34, 6.5, Math.PI, Math.PI*2); ctx.fill();
+  if(p.nombre){ etiqueta(ctx, b.x, b.y-44, p.nombre, "rgba(9,45,88,.85)", "#fff"); }
+  if(p.bubble){ etiqueta(ctx, b.x, b.y-(p.nombre?62:46), p.bubble, p.bubbleColor||"#fff", p.bubbleColor ? "#fff" : "#092d58"); }
+}
+function dibujarMoto(ctx, m){
+  var b = isoP(m.x, m.y, 0);
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+2, 16, 6, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#2b2b3a"; ctx.beginPath(); ctx.arc(b.x-11, b.y-2, 5, 0, Math.PI*2); ctx.arc(b.x+11, b.y-2, 5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = m.color; ctx.beginPath(); ctx.roundRect(b.x-13, b.y-12, 26, 9, 4); ctx.fill();
+  ctx.fillStyle = "#f3f3f3"; ctx.beginPath(); ctx.roundRect(b.x+1, b.y-22, 12, 11, 2); ctx.fill(); // caja térmica
+  ctx.strokeStyle = PAL.mostr; ctx.lineWidth = 1.5; ctx.strokeRect(b.x+1, b.y-22, 12, 11);
+  if(m.fuera){ etiqueta(ctx, b.x, b.y-30, m.nombre+" · en ruta", "rgba(247,98,4,.9)", "#1c0f03"); } else etiqueta(ctx, b.x, b.y-30, m.nombre, "rgba(9,45,88,.85)", "#fff");
+}
+function dibujarCamion(ctx, c){
+  var b = isoP(c.x, c.y, 0);
+  ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+3, 34, 9, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#2b2b3a"; [-22,-6,14].forEach(function(o){ ctx.beginPath(); ctx.arc(b.x+o, b.y-1, 6, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = "#e8edf2"; ctx.beginPath(); ctx.roundRect(b.x-30, b.y-34, 44, 28, 3); ctx.fill();
+  ctx.fillStyle = "#2f6fb3"; ctx.beginPath(); ctx.roundRect(b.x+14, b.y-26, 18, 20, 3); ctx.fill();
+  ctx.fillStyle = "#bfe3ff"; ctx.fillRect(b.x+17, b.y-23, 10, 8);
+  ctx.font = "700 9px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = PAL.mostr; ctx.textAlign = "center"; ctx.fillText("POLLO", b.x-8, b.y-17);
+  if(c.texto) etiqueta(ctx, b.x, b.y-44, c.texto, "rgba(29,122,62,.9)", "#fff");
+}
+function efecto(tipo, x, y, z, texto, color){ VIVO.efectos.push({ tipo:tipo, x:x, y:y, z:z||0, texto:texto, color:color||"#1d7a3e", vida:tipo==="moneda" ? 1.1 : 2.6, t:0, ox:x, oy:y, oz:z||0, tx:6.3, ty:4.4 }); }
+function dibujarEfectos(ctx, dt){
+  VIVO.efectos = VIVO.efectos.filter(function(e){ e.t += dt; return e.t < e.vida; });
+  VIVO.efectos.forEach(function(e){
+    var k = e.t/e.vida;
+    if(e.tipo==="texto"){ var p = isoP(e.x, e.y, e.z + k*40); ctx.globalAlpha = 1 - Math.max(0, k-0.6)/0.4; ctx.font = "700 13px 'IBM Plex Sans', sans-serif"; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.strokeText(e.texto, p.x, p.y); ctx.fillStyle = e.color; ctx.fillText(e.texto, p.x, p.y); ctx.globalAlpha = 1; }
+    else if(e.tipo==="moneda"){ var x = e.ox + (e.tx-e.ox)*k, y = e.oy + (e.ty-e.oy)*k, z = 20 + Math.sin(k*Math.PI)*55; var q = isoP(x, y, z); ctx.fillStyle = "#f5c242"; ctx.beginPath(); ctx.arc(q.x, q.y, 5, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = "#b8860b"; ctx.font = "700 7px sans-serif"; ctx.textAlign = "center"; ctx.fillText("S/", q.x, q.y+2.5); }
+  });
+}
+function cieloColor(){ var h = new Date().getHours() + new Date().getMinutes()/60; if(h >= 6 && h < 17) return ["#cfe6f7","#eaf3fa"]; if(h >= 17 && h < 19.5) return ["#f6b48a","#fbe2c4"]; if(h >= 5 && h < 6) return ["#9fb6d6","#dfe7f1"]; return ["#1b2a44","#2b3f63"]; }
+function esNoche(){ var h = new Date().getHours(); return h >= 19 || h < 6; }
+
+function vivoLayout(){
+  var c = VIVO.canvas; if(!c) return; var ancho = c.clientWidth || 800, alto = Math.round(Math.min(ancho * 0.58, document.fullscreenElement ? window.innerHeight - 90 : 1e9));
+  var dpr = Math.min(2, window.devicePixelRatio||1); c.width = Math.round(ancho*dpr); c.height = Math.round(alto*dpr); c.style.height = alto+"px";
+  VIVO.w = ancho; VIVO.h = alto; VIVO.esc = Math.min(ancho/ISO_W, alto/ISO_H) * dpr;
+  VIVO.ox = 462; VIVO.oy = 112;
+  VIVO.ctx = c.getContext("2d"); VIVO.ctx.setTransform(VIVO.esc, 0, 0, VIVO.esc, (c.width - ISO_W*VIVO.esc)/2, (c.height - ISO_H*VIVO.esc)/2);
+}
+function vivoDibujar(dt){
+  var ctx = VIVO.ctx; if(!ctx) return; var noche = esNoche();
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); var cs = cieloColor(); var g = ctx.createLinearGradient(0,0,0,VIVO.canvas.height); g.addColorStop(0, cs[0]); g.addColorStop(1, cs[1]); ctx.fillStyle = g; ctx.fillRect(0,0,VIVO.canvas.width,VIVO.canvas.height);
+  if(noche){ ctx.fillStyle = "rgba(255,255,255,.8)"; for(var i=0;i<40;i++){ var sx = (i*97)%VIVO.canvas.width, sy = (i*53)%Math.round(VIVO.canvas.height*0.35); ctx.fillRect(sx, sy, 2, 2); } }
+  ctx.restore();
+  // calle y vereda (fuera del local)
+  losange(ctx, -3, 9, 18, 2.2, PAL.calle, 0); losange(ctx, -3, 8.55, 18, 0.45, PAL.vereda, 0);
+  ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.setLineDash([10,10]); ctx.lineWidth = 2; var l1 = isoP(-3,10.1,0), l2 = isoP(15,10.1,0); ctx.beginPath(); ctx.moveTo(l1.x,l1.y); ctx.lineTo(l2.x,l2.y); ctx.stroke(); ctx.setLineDash([]);
+  // piso del local
+  for(var x=0;x<ISO.cols;x++) for(var y=0;y<ISO.filas-1;y++) losange(ctx, x, y, 1, 1, (x+y)%2 ? PAL.piso1 : PAL.piso2, 0);
+  // paredes traseras
+  caja3d(ctx, 0, -0.3, ISO.cols, 0.3, 95, PAL.pared, PAL.paredL, PAL.paredR);
+  caja3d(ctx, -0.3, -0.3, 0.3, ISO.filas-1+0.3, 95, PAL.pared, PAL.paredL, PAL.paredR);
+  // letrero
+  var lp = isoP(6, -0.3, 80); ctx.fillStyle = PAL.mostr; ctx.beginPath(); ctx.roundRect(lp.x-110, lp.y-16, 220, 30, 6); ctx.fill(); ctx.font = "400 18px 'Anton', 'Arial Narrow', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText(VIVO.nombreLocal || CFG.nombre.toUpperCase(), lp.x, lp.y+6);
+  // ventilador de pared
+  VIVO.ventilador += dt*6; var vp = isoP(10.5, -0.3, 60); ctx.strokeStyle = "#6f7882"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(vp.x, vp.y, 11, 0, Math.PI*2); ctx.stroke(); for(var k=0;k<3;k++){ var ang = VIVO.ventilador + k*Math.PI*2/3; ctx.beginPath(); ctx.moveTo(vp.x, vp.y); ctx.lineTo(vp.x+Math.cos(ang)*9, vp.y+Math.sin(ang)*9); ctx.stroke(); }
+  // elementos ordenados por profundidad
+  var items = [];
+  // cámara frigorífica
+  items.push({ d:3+2, draw:function(){ caja3d(ctx, 0.2, 0.2, 3.6, 2.6, 70, PAL.frio, PAL.frioL, PAL.frioR); var dp = isoP(2.4, 2.8, 0); ctx.fillStyle = "#dff1fb"; ctx.fillRect(dp.x-12, dp.y-50, 22, 46); ctx.strokeStyle = "#4a86ad"; ctx.strokeRect(dp.x-12, dp.y-50, 22, 46); ctx.fillStyle = "#4a86ad"; ctx.fillRect(dp.x+4, dp.y-30, 3, 8); textoIso(ctx, 2, 1.5, 78, "❄ CÁMARA", "#1f4f7a", 12, true); textoIso(ctx, 2, 1.5, 62, kgTxt(VIVO.stockKg)+" kg", "#1f4f7a", 11, true); } });
+  // jabas de pollo (stock)
+  var n = VIVO.stockCajas; for(var i=0;i<n;i++){ (function(i){ var cx = 5 + (i%4)*0.9, cy = 0.3 + Math.floor((i%8)/4)*0.9, lvl = Math.floor(i/8); items.push({ d:cx+cy+0.9+lvl*0.01, draw:function(){ caja3d(ctx, cx, cy, 0.8, 0.8, 16, "#f0b35a", "#d99a3f", "#b97f2f", lvl*16); var t = isoP(cx+0.4, cy+0.4, lvl*16+16); ctx.fillStyle = PAL.pollo; ctx.beginPath(); ctx.ellipse(t.x, t.y-2, 9, 5, 0, 0, Math.PI*2); ctx.fill(); } }); })(i); }
+  if(n===0) items.push({ d:6.5, draw:function(){ textoIso(ctx, 6.5, 1, 20, "sin stock registrado", "#8c5a2b", 11); } });
+  // balanza
+  items.push({ d:3+4+1, draw:function(){ caja3d(ctx, 2.6, 4, 0.8, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); caja3d(ctx, 2.7, 4.1, 0.6, 0.6, 6, PAL.metal, PAL.metalL, PAL.metalR, 24); var bp = isoP(3, 4.3, 44); ctx.fillStyle = "#1b1b1b"; ctx.fillRect(bp.x-9, bp.y-8, 18, 10); ctx.fillStyle = "#7CFC98"; ctx.font = "700 7px monospace"; ctx.textAlign = "center"; ctx.fillText(VIVO.pesoBalanza||"0.00", bp.x, bp.y-1); } });
+  // mostrador
+  items.push({ d:4.5+4+1, draw:function(){ caja3d(ctx, 3.6, 4, 2.6, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); textoIso(ctx, 4.9, 4.8, 8, "MOSTRADOR", "#fff", 9, true); } });
+  // caja registradora
+  items.push({ d:6.3+4+1.01, draw:function(){ caja3d(ctx, 6.3, 4, 0.8, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); caja3d(ctx, 6.4, 4.1, 0.6, 0.6, 12, "#3b4a5c", "#2c3847", "#1f2834", 24); var cp = isoP(6.7, 4.4, 40); ctx.fillStyle = "#7CFC98"; ctx.fillRect(cp.x-8, cp.y-6, 16, 7); if(VIVO.cajaBrillo > 0){ ctx.fillStyle = "rgba(245,194,66,"+Math.min(1,VIVO.cajaBrillo)+")"; ctx.beginPath(); ctx.arc(cp.x, cp.y-10, 14, 0, Math.PI*2); ctx.fill(); } } });
+  // estante lateral
+  items.push({ d:11+3, draw:function(){ caja3d(ctx, 10.6, 1, 1.2, 2.4, 50, PAL.metal, PAL.metalL, PAL.metalR); for(var r=0;r<3;r++){ losange(ctx, 10.7, 1.1, 1, 2.2, "#f8e4c8", 16*r+14); } } });
+  // puerta de entrada (marco en el frente)
+  items.push({ d:4+8+1, draw:function(){ caja3d(ctx, 0, 7.8, 3.9, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); caja3d(ctx, 5.6, 7.8, ISO.cols-5.6, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); var e = isoP(4.75, 8.1, 34); ctx.fillStyle = "#1d7a3e"; ctx.beginPath(); ctx.roundRect(e.x-30, e.y-10, 60, 16, 4); ctx.fill(); ctx.font = "700 10px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText(VIVO.abierto ? "ABIERTO" : "CERRADO", e.x, e.y+2); } });
+  // personas, motos, camiones
+  VIVO.personas.forEach(function(p){ items.push({ d:p.x+p.y+0.5, draw:function(){ dibujarPersona(ctx, p); } }); });
+  VIVO.motos.forEach(function(m){ items.push({ d:m.x+m.y+0.6, draw:function(){ dibujarMoto(ctx, m); } }); });
+  VIVO.camiones.forEach(function(c){ items.push({ d:c.x+c.y+0.7, draw:function(){ dibujarCamion(ctx, c); } }); });
+  items.sort(function(a,b){ return a.d-b.d; }).forEach(function(it){ it.draw(); });
+  if(noche){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = "rgba(10,20,50,.28)"; ctx.fillRect(0,0,VIVO.canvas.width,VIVO.canvas.height); ctx.restore(); var lz = isoP(5, 3.5, 90); var gl = ctx.createRadialGradient(lz.x, lz.y, 10, lz.x, lz.y, 260); gl.addColorStop(0, "rgba(255,230,160,.35)"); gl.addColorStop(1, "rgba(255,230,160,0)"); ctx.fillStyle = gl; ctx.fillRect(lz.x-300, lz.y-200, 600, 500); }
+  dibujarEfectos(ctx, dt);
+  if(VIVO.cajaBrillo > 0) VIVO.cajaBrillo -= dt*1.5;
+}
+function vivoLoop(ts){
+  if(!VIVO.canvas || !document.body.contains(VIVO.canvas)){ VIVO.raf = 0; return; }
+  var dt = Math.min(0.05, (ts - (VIVO.tAnt||ts))/1000); VIVO.tAnt = ts;
+  if(!document.hidden){
+    VIVO.personas = VIVO.personas.filter(function(p){ return p.viva; });
+    VIVO.personas.forEach(function(p){ moverPersona(p, dt); });
+    VIVO.motos.forEach(function(m){ moverMoto(m, dt); });
+    VIVO.camiones = VIVO.camiones.filter(function(c){ return c.viva; }); VIVO.camiones.forEach(function(c){ moverCamion(c, dt); });
+    procesarCola(ts);
+    ambiente(dt);
+    vivoDibujar(dt);
+  }
+  VIVO.raf = requestAnimationFrame(vivoLoop);
+}
+function moverMoto(m, dt){
+  if(m.fuera){ m.t += dt; if(m.t < 2.2){ m.x += 4*dt; } else if(m.t < m.dur){ m.x = 20; } else if(m.t < m.dur + 2.6){ if(m.x > 19) m.x = -4; m.x += 4*dt; if(m.x >= m.px){ m.x = m.px; m.fuera = false; } } else { m.x = m.px; m.fuera = false; } }
+}
+function moverCamion(c, dt){
+  c.t += dt; if(c.fase===0){ c.x += 3.2*dt; if(c.x >= 1.5){ c.fase = 1; c.t = 0; } } else if(c.fase===1){ if(c.t > 2.6){ c.fase = 2; c.texto = null; } } else { c.x += 3.4*dt; if(c.x > 17) c.viva = false; }
+}
+var COLORES_ROPA = ["#2f6fb3","#c23b2c","#1d7a3e","#742284","#b26a00","#049a91","#5c6f88","#d14f02"];
+function clienteCompra(ev){
+  var v = ev.v, pendiente = estaPendiente(v), total = num(v.total);
+  var color = COLORES_ROPA[Math.floor(Math.random()*COLORES_ROPA.length)];
+  var piel = ["#f1c9a5","#d9a97c","#b98357","#8d5a3b"][Math.floor(Math.random()*4)];
+  var puerta = { x:4.75, y:8.6 }, frente = { x:4.3 + Math.random()*1.2, y:5.3 };
+  var kgTotal = (v.items||[]).reduce(function(s,it){ return s + (num(it.kg) > 0 ? num(it.kg) : 0); }, 0);
+  var p = nuevaPersona({ x:4.75, y:10.6, color:color, piel:piel, ruta:[puerta, frente], acciones:[
+    { espera:1.4, bubble:(v.cliente||"Cliente").slice(0,22), fn:function(pp){ VIVO.pesoBalanza = kgTotal ? kgTotal.toFixed(2) : "1.00"; } },
+    { espera:1.2, bubble:resumenItems(v.items).slice(0,30), fn:function(pp){ pp.bolsa = true; } },
+    { espera:1.0, bubble:pendiente ? "Debe "+fmt(saldoPendiente(v)) : "Paga "+fmt(total)+(v.metodoPago&&v.metodoPago!=="efectivo" ? " · "+metodoLabel(v.metodoPago) : ""), color:pendiente ? "#c23b2c" : "#1d7a3e",
+      fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20); }, i*90); VIVO.cajaBrillo = 1.4; } efecto("texto", 6.7, 4.4, 60, "N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); } },
+    { ruta:[puerta, { x:4.75, y:10.8 }] }
+  ], alTerminar:function(pp){ pp.viva = false; } });
+  var moto = VIVO.motos.find(function(m){ return m.nombre===(v.vendedor||""); });
+  if(moto && !moto.fuera){ moto.fuera = true; moto.t = 0; moto.dur = 6 + Math.random()*4; }
+  if(VIVO.trabajador){ VIVO.trabajador.bubble = "¡Buenas! ¿Qué va a llevar?"; VIVO.trabajador.espera = 1.6; }
+}
+function procesarCola(ts){
+  if(!VIVO.cola.length) return; if(ts - VIVO.ultimaSpawn < 1500) return; VIVO.ultimaSpawn = ts;
+  var ev = VIVO.cola.shift();
+  if(ev.tipo==="venta") clienteCompra(ev);
+  else if(ev.tipo==="cobro"){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", 4.75, 8.6, 20); }, i*90); VIVO.cajaBrillo = 1.4; efecto("texto", 6.7, 4.4, 60, "Cobro deuda "+fmt(ev.monto)+" · "+(ev.cliente||""), "#1d7a3e"); }
+  else if(ev.tipo==="compra"){ VIVO.camiones.push({ x:-4, y:9.6, t:0, fase:0, viva:true, texto:"+"+kgTxt(ev.kg)+" kg "+String(ev.producto||"").toLowerCase() }); setTimeout(function(){ VIVO.stockCajas = Math.min(16, VIVO.stockCajas + Math.max(1, Math.round(num(ev.kg)/50))); VIVO.stockKg += num(ev.kg); efecto("texto", 6.5, 1, 40, "+"+kgTxt(ev.kg)+" kg", "#1d7a3e"); if(VIVO.trabajador){ VIVO.trabajador.ruta = [{x:1.5,y:3.6},{x:6.5,y:2.6},{x:4.9,y:3.4}]; } }, 2600); }
+  else if(ev.tipo==="merma"){ VIVO.stockKg -= num(ev.kg); VIVO.stockCajas = Math.max(0, VIVO.stockCajas - Math.max(1, Math.round(num(ev.kg)/50))); efecto("texto", 6.5, 1, 40, "−"+kgTxt(ev.kg)+" kg merma", "#c23b2c"); }
+}
+function ambiente(dt){
+  // Trabajador detrás del mostrador: de vez en cuando va a la cámara y vuelve.
+  var w = VIVO.trabajador; if(!w) return;
+  if(!w.ruta.length && !w.espera && !w.acciones.length){ VIVO.tOcio = (VIVO.tOcio||0) + dt; if(VIVO.tOcio > 7 + Math.random()*8){ VIVO.tOcio = 0; w.acciones = [ { ruta:[{x:2.4,y:3.4},{x:2.4,y:3.1}] }, { espera:1.2 }, { ruta:[{x:4.9,y:3.4}] } ]; } }
+}
+function vivoReconstruirMotos(){
+  var nombres = (S.nombres||[]).slice(0,5); if(!nombres.length) nombres = [S.user.nombre];
+  VIVO.motos = nombres.map(function(n, i){ var px = 7.2 + i*1.25; return { nombre:n, x:px, px:px, y:9.4, color:COLORES_ROPA[(i+2)%COLORES_ROPA.length], fuera:false, t:0, dur:0 }; });
+}
+function vivoEstadoHoy(){
+  var f = todayISO(), r = { tipo:"hoy", desde:f, hasta:f }; return { f:f, ing:calcIngresos(r), eg:calcEgresos(r) };
+}
+function vivoSincronizar(){
+  // Detecta notas, cobros, compras y mermas nuevas y las manda a la escena.
+  var E = vivoEstadoHoy(), f = E.f, primera = !VIVO.vistos; if(primera) VIVO.vistos = {};
+  var notas = E.ing.lista.slice().sort(function(a,b){ return num(a.creadoEn)-num(b.creadoEn); });
+  var nuevas = [];
+  notas.forEach(function(v){ if(!VIVO.vistos[v.id]){ VIVO.vistos[v.id] = true; nuevas.push(v); } });
+  if(primera){ nuevas.slice(-3).forEach(function(v){ VIVO.cola.push({ tipo:"venta", v:v }); }); }
+  else nuevas.forEach(function(v){ VIVO.cola.push({ tipo:"venta", v:v }); });
+  Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.tipoPago!=="credito") return; var ab = montoAbonado(v); var ant = VIVO.abonos[id]; VIVO.abonos[id] = ab; if(!primera && ant !== undefined && ab > ant + 0.009){ var ult = abonosEfectivos(v)[abonosEfectivos(v).length-1]; if(ult && String(ult.fecha||"").slice(0,10)===f) VIVO.cola.push({ tipo:"cobro", monto:ab-ant, cliente:v.cliente }); } });
+  Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado || e.fecha !== f || !e.kardex) return; var k = "eg_"+id; if(VIVO.vistos[k]) return; VIVO.vistos[k] = true; if(primera) return; if(e.tipo==="merma") VIVO.cola.push({ tipo:"merma", kg:e.kardex.kg, producto:e.kardex.producto }); else if(e.tipo!=="ajuste") VIVO.cola.push({ tipo:"compra", kg:e.kardex.kg, producto:e.kardex.producto }); });
+  // stock según kardex
+  var kx = calcKardex({ desde:f, hasta:f }); var kg = kx.reduce(function(s,p){ return s + Math.max(0, p.final); }, 0);
+  VIVO.stockKg = kg; VIVO.stockCajas = Math.min(16, Math.round(kg/50));
+  VIVO.abierto = notas.length > 0 || (new Date().getHours() >= 5 && new Date().getHours() < 20);
+  VIVO.feed = notas.slice().reverse().slice(0, 12);
+}
+function vivoPanelHtml(){
+  var E = vivoEstadoHoy(), ing = E.ing, eg = E.eg, f = E.f;
+  var notas = ing.lista.slice().sort(function(a,b){ return num(b.creadoEn)-num(a.creadoEn); }); var ultima = notas[0];
+  var porV = {}; notas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; var g = porV[k] || (porV[k] = { notas:0, vendido:0, pendiente:0, ultima:0 }); g.notas++; g.vendido += num(v.total); if(estaPendiente(v)) g.pendiente += saldoPendiente(v); g.ultima = Math.max(g.ultima, num(v.creadoEn)); });
+  var kg = notas.reduce(function(s,v){ return s + (v.items||[]).reduce(function(t,it){ return t + (num(it.kg) > 0 ? num(it.kg) : 0); }, 0); }, 0);
+  return '<ul class="ledger">'
+    + '<li><span class="lk">Vendido hoy</span><span class="lv" style="color:var(--ok);">'+fmt(ing.vendido)+'</span><span class="ls">'+ing.notas+' nota'+(ing.notas===1?'':'s')+' · '+kgTxt(kg)+' kg'+(ultima ? ' · última '+haceTxt(num(ultima.creadoEn))+' ('+escapeHtml(ultima.vendedor||"")+')' : '')+'</span></li>'
+    + '<li><span class="lk">Cobrado hoy</span><span class="lv">'+fmt(ing.cobrado.total)+'</span><span class="ls">efectivo '+n2(ing.cobrado.efectivo)+' · banco '+n2(ing.cobrado.banco)+' · Yape '+n2(ing.cobrado.yape)+' · Plin '+n2(ing.cobrado.plin)+'</span></li>'
+    + '<li><span class="lk">Queda por cobrar de hoy</span><span class="lv" style="color:var(--danger);">'+fmt(ing.porCobrar)+'</span></li>'
+    + '<li><span class="lk">Gastos de hoy</span><span class="lv negv">'+fmt(eg.total)+'</span></li>'
+    + '<li class="sum"><span class="lk">Efectivo que debe haber en caja</span><span class="lv">'+fmt(ing.cobrado.efectivo - eg.porMetodo.efectivo)+'</span></li>'
+    + '</ul>'
+    + '<h3 style="font-size:13px;margin:14px 0 6px;">Por vendedor</h3>'
+    + (Object.keys(porV).length ? '<ul class="ledger">'+Object.keys(porV).sort(function(a,b){ return porV[b].vendido-porV[a].vendido; }).map(function(k){ var g = porV[k]; return '<li><span class="lk"><strong>'+escapeHtml(k)+'</strong> <span class="kard-sub">'+g.notas+' nota'+(g.notas===1?'':'s')+' · '+haceTxt(g.ultima)+'</span></span><span class="lv">'+fmt(g.vendido)+(g.pendiente>0.009?' <span class="kard-sub negv">debe '+n2(g.pendiente)+'</span>':'')+'</span></li>'; }).join("")+'</ul>' : '<p class="kard-sub">Nadie ha vendido todavía.</p>')
+    + '<h3 style="font-size:13px;margin:14px 0 6px;">Últimas notas</h3>'
+    + (notas.length ? notas.slice(0,8).map(function(v){ var u = mapsLink(v.ubicacion); return '<div class="live-row"><div class="lh">'+horaDisplay(v.creadoEn)+'</div><div class="lw"><b>'+escapeHtml(v.cliente||"")+'</b> <span class="kard-sub">'+escapeHtml(v.vendedor||"")+'</span><div class="ld">'+escapeHtml(resumenItems(v.items)).slice(0,60)+(u ? ' · <a href="'+u+'" target="_blank" rel="noopener">mapa</a>' : '')+'</div></div><div class="la"><span class="amt">'+fmt(v.total)+'</span>'+(estaPendiente(v) ? '<span class="tag" style="background:var(--danger-bg);color:var(--danger);">Pendiente</span>' : tagMetodo(v.metodoPago))+'</div></div>'; }).join("") : '<p class="kard-sub">Todavía no hay notas hoy. Apenas un vendedor emita una, el cliente aparece en la escena.</p>');
+}
+function renderEnVivo(){
+  var f = todayISO();
+  return '<h1 class="section-title"><span class="live-dot"></span>Tienda en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
+    + '<div class="vivo-grid"><div class="card vivo-card"><canvas id="vivo-canvas" aria-label="Escena del local en vivo"></canvas>'
+    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button></div></div>'
+    + '<div class="card" id="vivo-panel">'+vivoPanelHtml()+'</div></div>';
+}
+function vivoMontar(){
+  var c = document.getElementById("vivo-canvas"); if(!c) return;
+  VIVO.canvas = c; VIVO.nombreLocal = CFG.nombre.toUpperCase(); vivoLayout();
+  if(!VIVO.trabajador || !VIVO.trabajador.viva){ VIVO.trabajador = nuevaPersona({ x:4.9, y:3.4, color:"#f76204", pelo:"#1a1a1a", nombre:"Caja" }); } else VIVO.personas.push(VIVO.trabajador);
+  if(!VIVO.motos.length) vivoReconstruirMotos();
+  VIVO.vistos = null; VIVO.cola = []; VIVO.personas = VIVO.personas.filter(function(p){ return p===VIVO.trabajador; }); VIVO.efectos = []; VIVO.camiones = [];
+  vivoSincronizar();
+  if(!VIVO.raf){ VIVO.tAnt = 0; VIVO.raf = requestAnimationFrame(vivoLoop); }
+  if(!VIVO.resizeOn){ VIVO.resizeOn = true; window.addEventListener("resize", function(){ if(VIVO.canvas && document.body.contains(VIVO.canvas)) vivoLayout(); }); }
+}
+function vivoRefrescar(){
+  var panel = document.getElementById("vivo-panel"); if(!panel) return false;
+  vivoSincronizar(); if(!document.querySelector(".overlay")) panel.innerHTML = vivoPanelHtml();
+  var est = document.getElementById("vivo-estado"); if(est) est.textContent = (S.online ? "Conectado" : "Sin internet")+" · "+(VIVO.cola.length ? VIVO.cola.length+" en camino" : "se actualiza solo");
+  return true;
+}
+function vivoDemo(){
+  var v = { id:"demo", cliente:"Cliente de ejemplo", vendedor:(VIVO.motos[0]||{}).nombre||"", total:148.5, items:[{ producto:"POLLO ENTERO", kg:15, cantidad:5, precio:9.9 }], tipoPago:"contado", metodoPago:"efectivo", pagado:true, serie:"X", correlativo:0, creadoEn:Date.now() };
+  VIVO.cola.push({ tipo:"venta", v:v });
+}
+setInterval(function(){ if(S.user && UI.vista==="envivo") vivoRefrescar(); }, 60000);
 
 // ---------- GASTOS ----------
 function renderGastos(){
@@ -976,6 +1201,8 @@ document.addEventListener("click", function(ev){
   if(action==="kardex-detalle"){ abrirKardexDetalle(val); return; }
   if(action==="nuevo-ajuste"){ abrirFormAjuste(); return; }
   if(action==="nuevo-merma"){ abrirFormMerma(); return; }
+  if(action==="vivo-demo"){ vivoDemo(); return; }
+  if(action==="vivo-pantalla"){ var vc = document.querySelector(".vivo-card"); if(!vc) return; if(document.fullscreenElement){ document.exitFullscreen(); } else if(vc.requestFullscreen){ vc.requestFullscreen().then(function(){ setTimeout(vivoLayout, 300); }).catch(function(){}); } return; }
   if(action==="guardar-merma"){ guardarMerma(); return; }
   if(action==="quitar-mov"){ var mv = S.egresos[id]; if(mv && confirm("¿Quitar este movimiento del Kardex ("+(mv.tipo==="merma"?"merma":"ajuste")+" de "+kgTxt(mv.kardex?mv.kardex.kg:0)+")?")){ eliminarGasto(id, true, true); } return; }
   if(action==="guardar-ajuste"){ guardarAjuste(); return; }
