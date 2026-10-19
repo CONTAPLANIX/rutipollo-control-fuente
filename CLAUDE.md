@@ -36,6 +36,10 @@
   construye la escena sobre `#vivo-gl`, `vivo3dRender` la actualiza; el canvas 2D queda oculto como respaldo. Roles: UN solo camión de
   reparto (ventas de usuarios con rol vendedor, p. ej. CRISTIAN, se atienden en la vereda junto al camión); los administradores (JABES,
   DELIA, ELLIAN) son cajeros detrás del mostrador (`vivoCajeros`, lee `usuarios`). Otto: perrito blanco que pasea (`OTTO`, `moverOtto`).
+- C22/C23: realismo 3D según las skills `threejs-lighting` y `threejs-materials` (skills.sh, repo cloudai-x/threejs-skills): entorno
+  reflejado con PMREM (`crearEntorno`), luces en candela (PointLight 14 de noche / 2 de día; SpotLight del camión 35), sombra del sol con
+  radius/bias, `MeshPhysicalMaterial` con clearcoat (camión, mostrador) y transmission (vitrina), sombras de contacto (`sombraContacto`).
+  Mascotas: `MASCOTAS` (Otto, Ramón, Duko) con `moverMascota`/`dibujarMascota`/`vivo3dMascota`. La carpeta `capturas/` no se sube.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
