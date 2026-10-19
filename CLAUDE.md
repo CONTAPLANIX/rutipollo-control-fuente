@@ -31,6 +31,11 @@
 - C14/C15: campanita de caja y voz natural (`mejorVoz`); foto del comprobante con recorte (`abrirRecorte`, canvas con rectángulo) y lectura del
   monto con Tesseract.js 5.1.1 (cdnjs, carga diferida al tocar "Leer monto", idioma `spa`, datos desde tessdata.projectnaptha.com);
   `interpretarTexto` prioriza cifras en líneas con TOTAL/IMPORTE/S/ y excluye SUBTOTAL/IGV; también saca fecha y proveedor.
+- C16–C18: vista 3D real con three.js 0.160 (cdnjs, carga diferida al entrar a Rico Pollo en vivo; botón "Vista: 3D / clásica", guardado
+  en localStorage `vista3d`). La lógica (clientes, cola, camión, celebraciones, marcador) es la misma; solo cambia el dibujo: `vivo3dInit`
+  construye la escena sobre `#vivo-gl`, `vivo3dRender` la actualiza; el canvas 2D queda oculto como respaldo. Roles: UN solo camión de
+  reparto (ventas de usuarios con rol vendedor, p. ej. CRISTIAN, se atienden en la vereda junto al camión); los administradores (JABES,
+  DELIA, ELLIAN) son cajeros detrás del mostrador (`vivoCajeros`, lee `usuarios`). Otto: perrito blanco que pasea (`OTTO`, `moverOtto`).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
