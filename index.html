@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rico Pollo - Dissur</title>
+<title>Rico Pollo</title>
 <meta name="description" content="Control interno Rico Pollo Dissur: ingresos, egresos, kardex y utilidad">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="assets/icon-192.png">
@@ -41,9 +41,9 @@
     --accent:#ff7a1f; --accent-strong:#ff9245; --accent-ink:#1c0f03; --ok:#5fcf87; --ok-bg:#163525; --danger:#ff6b5a; --danger-bg:#3a1c18; --warn:#f0b35a; --warn-bg:#3a2a12;
     --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 8px 22px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.3); --shadow-lg:0 20px 45px rgba(0,0,0,.5),0 6px 16px rgba(0,0,0,.35);
   }
-  :root{ --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --grid:#e3e8ef; }
-  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --grid:#2a3a4e; } }
-  :root[data-theme="dark"]{ --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --grid:#2a3a4e; }
+  :root{ --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --grid:#e3e8ef; --band:#092d58; --sel:#092d58; --sel-ink:#ffffff; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --grid:#2a3a4e; --band:#0f2342; --sel:#ff7a1f; --sel-ink:#1c0f03; } }
+  :root[data-theme="dark"]{ --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --grid:#2a3a4e; --band:#0f2342; --sel:#ff7a1f; --sel-ink:#1c0f03; }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{ background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; -webkit-font-smoothing:antialiased; font-size:14px; }
@@ -128,7 +128,7 @@
   .btn-ghost:hover{ background:var(--paper-raised); color:var(--ink); border-color:var(--line); }
   .seg{ display:inline-flex; background:var(--paper-raised); border:1px solid var(--line-strong); border-radius:999px; padding:3px; gap:2px; flex-wrap:wrap; }
   .seg button{ background:transparent; border:none; border-radius:999px; padding:7px 13px; font-size:13px; font-weight:600; color:var(--ink-soft); }
-  .seg button.on{ background:var(--ink); color:#fff; }
+  .seg button.on{ background:var(--sel); color:var(--sel-ink); }
   .seg.small button{ padding:5px 10px; font-size:12px; }
   .sel-wrap{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); }
   select,input[type=date],input[type=text],input[type=number],input[type=password],input[type=search],textarea{ background:var(--paper-raised); border:1px solid var(--line-strong); border-radius:var(--r-sm); padding:8px 10px; color:var(--ink); min-height:38px; }
@@ -153,7 +153,7 @@
   .stat.uti .value{ font-size:26px; }
   .stat.neg .value{ color:var(--danger); }
   .stat.click{ cursor:pointer; } .stat.click:hover{ border-color:var(--line-strong); }
-  .eq{ display:grid; grid-template-columns:1fr auto 1fr auto 1.25fr; align-items:stretch; gap:0 14px; background:var(--ink); color:#fff; border-radius:var(--r-lg); padding:22px 26px; margin:0 0 18px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+  .eq{ display:grid; grid-template-columns:1fr auto 1fr auto 1.25fr; align-items:stretch; gap:0 14px; background:var(--band); color:#fff; border-radius:var(--r-lg); padding:22px 26px; margin:0 0 18px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
   .eq::after{ content:""; position:absolute; right:-40px; top:-60px; width:220px; height:220px; border-radius:50%; background:radial-gradient(closest-side, rgba(247,98,4,.28), transparent); pointer-events:none; }
   .eq-item{ display:flex; flex-direction:column; gap:4px; min-width:0; position:relative; z-index:1; }
   .eq-k{ font-size:13px; color:rgba(255,255,255,.72); }
@@ -233,6 +233,14 @@
   .tag{ display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--paper-alt); color:var(--ink-soft); white-space:nowrap; }
   .tag.efectivo{ background:#e4f4e9; color:#1d7a3e; } .tag.banco{ background:#e1ecfb; color:#1f4f9c; } .tag.yape{ background:#f1e3f7; color:#742284; } .tag.plin{ background:#dcf5f3; color:#049a91; }
   .tag.cat{ background:var(--warn-bg); color:var(--warn); }
+  body.oscuro .tag.efectivo{ background:rgba(95,207,135,.16); color:#8fe3ad; } body.oscuro .tag.banco{ background:rgba(57,135,229,.2); color:#9ec5f4; } body.oscuro .tag.yape{ background:rgba(144,133,233,.2); color:#c4bdf5; } body.oscuro .tag.plin{ background:rgba(25,158,112,.2); color:#7fe0c0; }
+  body.oscuro .tag{ background:rgba(255,255,255,.08); color:var(--ink-soft); }
+  .viz circle, .spark circle{ stroke:var(--paper-raised); }
+  .spark circle{ stroke:var(--band); }
+  body.oscuro .leaflet-tile{ filter:brightness(.72) contrast(1.05) saturate(.7); }
+  body.oscuro .leaflet-control-attribution, body.oscuro .leaflet-bar a{ background:#182432; color:#c3c2b7; } body.oscuro .leaflet-popup-content-wrapper, body.oscuro .leaflet-popup-tip{ background:#182432; color:#eef2f7; }
+  body.oscuro .eq::after{ background:radial-gradient(closest-side, rgba(255,122,31,.22), transparent); }
+  body.oscuro .cal rect.dia:hover{ stroke:#fff; }
   .tag.merma{ background:var(--danger-bg); color:var(--danger); }
   .empty{ color:var(--ink-soft); font-size:13px; padding:14px 0; text-align:center; }
   .chart-card svg{ display:block; }
@@ -267,7 +275,7 @@
   .kard-sub{ font-size:12px; color:var(--ink-soft); }
   .pay-toggle{ display:flex; gap:6px; flex-wrap:wrap; }
   .pay-opt{ flex:1; min-width:80px; background:var(--paper-raised); border:1px solid var(--line-strong); border-radius:var(--r-sm); padding:9px 8px; font-weight:600; font-size:13px; color:var(--ink-soft); }
-  .pay-opt.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .pay-opt.on{ background:var(--sel); color:var(--sel-ink); border-color:var(--sel); }
   .chk{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin:4px 0 12px; cursor:pointer; }
   .chk input{ width:18px; height:18px; }
   .cat-list{ display:flex; flex-direction:column; gap:6px; }
@@ -283,14 +291,14 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C10";
+var APP_VERSION = "18 oct · C11";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
   if(CRC && !CRC.roundRect) CRC.roundRect = function(x,y,w,h,r){ r = Math.max(0, Math.min(Number(r)||0, w/2, h/2)); this.moveTo(x+r,y); this.arcTo(x+w,y,x+w,y+h,r); this.arcTo(x+w,y+h,x,y+h,r); this.arcTo(x,y+h,x,y,r); this.arcTo(x,y,x+w,y,r); this.closePath(); return this; };
   if(CRC && !CRC.ellipse) CRC.ellipse = function(x,y,rx,ry,rot,a0,a1){ this.save(); this.translate(x,y); this.scale(rx, ry); this.arc(0,0,1,a0,a1); this.restore(); return this; };
 }catch(e){}
-var CFG = { nombre:"Rico Pollo Dissur", titulo:"Rico Pollo - Dissur", dominio:"rutipollo.app", prefijo:"lrc", app:"Rutipollo" };
+var CFG = { nombre:"Rico Pollo Dissur", titulo:"Rico Pollo", dominio:"rutipollo.app", prefijo:"lrc", app:"Rutipollo" };
 var CATEGORIAS_BASE = ["Compra de pollo","Transporte / combustible","Sueldos","Alquiler","Servicios","Insumos","Otros"];
 var METODOS = ["efectivo","banco","yape","plin"];
 var MOTIVOS_MERMA = ["Malogrado / descompuesto","Vencido","Devolución de cliente","Robo o pérdida","Peso de menos del proveedor","Otro"];
@@ -362,8 +370,10 @@ var UI = { vista:"tablero", per:{ tipo:"mes", anio:hp.anio, mes:hp.mes, dia:hoy,
 
 // ---------- tema claro / oscuro ----------
 function temaActual(){ var t = document.documentElement.getAttribute("data-theme"); if(t) return t; return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light"; }
-function aplicarTema(t){ if(t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", temaActual()==="dark" ? "#0e1620" : "#092d58"); }
+function sincronizarOscuro(){ if(document.body) document.body.classList.toggle("oscuro", temaActual()==="dark"); }
+function aplicarTema(t){ if(t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); sincronizarOscuro(); var m = document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content", temaActual()==="dark" ? "#0e1620" : "#092d58"); }
 aplicarTema(lsGet("tema", null));
+try{ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ sincronizarOscuro(); if(S.user) render(); }); }catch(e){}
 // ---------- periodo ----------
 function periodo(){
   var p = UI.per, h = todayISO();
@@ -525,7 +535,7 @@ function sparkline(valores, color){
   var W = 130, H = 30, max = Math.max.apply(null, valores.concat([1])), pts = valores.map(function(v, i){ return [ (i/(n-1))*(W-8)+4, H-4 - (v/max)*(H-10) ]; });
   var d = pts.map(function(pt, i){ return (i?"L":"M")+pt[0].toFixed(1)+" "+pt[1].toFixed(1); }).join(" ");
   var area = d+" L"+pts[n-1][0].toFixed(1)+" "+(H-2)+" L"+pts[0][0].toFixed(1)+" "+(H-2)+" Z"; var u = pts[n-1];
-  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><path d="'+area+'" fill="'+color+'" opacity=".12"/><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+u[0].toFixed(1)+'" cy="'+u[1].toFixed(1)+'" r="4" fill="'+color+'" stroke="#0f2a4f" stroke-width="2"/></svg>';
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><path d="'+area+'" fill="'+color+'" opacity=".12"/><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="'+u[0].toFixed(1)+'" cy="'+u[1].toFixed(1)+'" r="4" fill="'+color+'" stroke-width="2"/></svg>';
 }
 function tendencia14(r){
   var hasta = r.hasta > todayISO() ? todayISO() : r.hasta, desde = isoAdd(hasta, -13), ingT = calcIngresos({ desde:desde, hasta:hasta }), egT = calcEgresos({ desde:desde, hasta:hasta });
@@ -569,7 +579,7 @@ function render(){
   function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+n[2]+'</span>'+(n[3] ? '<span class="badge">'+n[3]+'</span>' : '')+'</button>'; }).join(""); }
   var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="kardex" ? renderKardex() : UI.vista==="caja" ? renderCaja() : UI.vista==="avisos" ? renderAvisos() : renderAjustes();
   root.innerHTML = ''
-    + '<div class="topbar"><div class="brand"><img class="brand-logo" src="assets/logo.png" alt=""><div class="brand-text"><strong>'+CFG.titulo+'</strong><span>Control interno · ingresos − egresos = utilidad</span></div></div>'
+    + '<div class="topbar"><div class="brand"><img class="brand-logo" src="assets/logo.png" alt=""><div class="brand-text"><strong>'+CFG.titulo+'</strong></div></div>'
     + '<div class="topbar-right"><span class="user-badge"><span class="sync-dot '+(S.online?'ok':'warn')+'" title="'+(S.online?'Conectado':'Sin internet')+'"></span><span class="nom">Hola, <b>'+escapeHtml(S.user.nombre)+'</b></span></span>'
     + '<button class="icon-btn" data-action="tema" title="'+(temaActual()==="dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro")+'">'+ico(temaActual()==="dark" ? "sol" : "luna")+'</button>'
     + '<button class="btn btn-sm btn-ghost" data-action="cerrar-sesion" title="Cerrar sesión" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("salir")+'</span>Salir</button></div></div>'
