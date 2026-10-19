@@ -297,7 +297,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C18";
+var APP_VERSION = "18 oct · C19";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1135,7 +1135,7 @@ function vivo3dCamionVendedor(m){
   [[-0.65, 0.42],[-0.65,-0.42],[0.05,0.42],[0.05,-0.42],[0.8,0.42],[0.8,-0.42]].forEach(function(q){ var r = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.14, 16), m3(0x23232e, { rough:0.9 })); r.rotation.x = Math.PI/2; r.position.set(q[0], 0.19, q[1]); r.castShadow = true; g.add(r); var tapa = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.15, 12), m3(0x9aa3ad, { metal:0.7, rough:0.3 })); tapa.rotation.x = Math.PI/2; tapa.position.copy(r.position); g.add(tapa); });
   var faro = caja(0.04, 0.1, 0.12, 0xfff2a8, 1.17, 0.42, 0.25, { padre:g, sombra:false, emisivo:0xfff2a8, ei:0.6 }); var faro2 = faro.clone(); faro2.position.z = -0.25; g.add(faro2);
   var luz = new THREE.SpotLight(0xfff0c0, 0, 9, 0.5, 0.6, 1.2); luz.position.set(1.2, 0.5, 0); luz.target.position.set(6, 0, 0); g.add(luz); g.add(luz.target); g.userData.luz = luz;
-  var tx = texturaTexto("RICO POLLO DISSUR", { size:40, bold:true, font:"'Anton', 'Arial Narrow', sans-serif", color:"#092d58" }); [0.41, -0.41].forEach(function(zz){ var pl = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4*tx.userData.h/tx.userData.w), new THREE.MeshStandardMaterial({ map:tx, transparent:true, roughness:0.6 })); pl.position.set(-0.25, 0.85, zz); if(zz < 0) pl.rotation.y = Math.PI; g.add(pl); });
+  var tx = texturaTexto("RICO POLLO", { size:40, bold:true, font:"'Anton', 'Arial Narrow', sans-serif", color:"#092d58" }); [0.41, -0.41].forEach(function(zz){ var pl = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4*tx.userData.h/tx.userData.w), new THREE.MeshStandardMaterial({ map:tx, transparent:true, roughness:0.6 })); pl.position.set(-0.25, 0.85, zz); if(zz < 0) pl.rotation.y = Math.PI; g.add(pl); });
   var n = spriteTexto("Reparto", { size:30, color:"#ffffff", fondo:"rgba(9,45,88,.88)" }); n.position.set(0, 1.55, 0); g.add(n); g.userData.etiqueta = n;
   g.traverse(function(o){ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } }); T3.scene.add(g); m.m3 = g; return g;
 }
@@ -1368,7 +1368,7 @@ function renderEnVivo(){
 }
 function vivoMontar(){
   var c = document.getElementById("vivo-canvas"); if(!c) return;
-  VIVO.canvas = c; VIVO.nombreLocal = CFG.nombre.toUpperCase();
+  VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO";
   var glAnt = document.getElementById("vivo-gl"); if(glAnt) glAnt.style.display = "none"; c.style.display = "";
   vivo3dReset(); VIVO.modo = "2d"; vivoLayout();
   if(T3.on && hayWebGL()){ VIVO.modo = "3d"; var est0 = document.getElementById("vivo-estado"); if(est0) est0.textContent = "Cargando la vista 3D…";
