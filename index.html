@@ -291,7 +291,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C11";
+var APP_VERSION = "18 oct · C12";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -842,6 +842,72 @@ function dibujarEfectos(ctx, dt){
 }
 function cieloColor(){ var h = new Date().getHours() + new Date().getMinutes()/60; if(h >= 6 && h < 17) return ["#cfe6f7","#eaf3fa"]; if(h >= 17 && h < 19.5) return ["#f6b48a","#fbe2c4"]; if(h >= 5 && h < 6) return ["#9fb6d6","#dfe7f1"]; return ["#1b2a44","#2b3f63"]; }
 function esNoche(){ var h = new Date().getHours(); return h >= 19 || h < 6; }
+function horaDecimal(){ var d = new Date(); return d.getHours() + d.getMinutes()/60 + d.getSeconds()/3600; }
+var CIELO_CLAVES = [[0,"#0b1630","#1a2a4a"],[5,"#2b3f63","#6b5a7a"],[6.5,"#f3b07c","#ffd9b0"],[8,"#b9dbf3","#e6f2fb"],[12,"#a9d4f5","#e4f1fb"],[17,"#cfe0f0","#f9ddb8"],[18.5,"#e58a5a","#5b4a7a"],[19.5,"#1b2a44","#2b3f63"],[24,"#0b1630","#1a2a4a"]];
+function mezcla(a, b, k){ var pa = parseInt(a.slice(1),16), pb = parseInt(b.slice(1),16); var r = Math.round(((pa>>16)&255)*(1-k) + ((pb>>16)&255)*k), g = Math.round(((pa>>8)&255)*(1-k) + ((pb>>8)&255)*k), bl = Math.round((pa&255)*(1-k) + (pb&255)*k); return "rgb("+r+","+g+","+bl+")"; }
+function cieloAhora(){ var h = horaDecimal(); for(var i=0;i<CIELO_CLAVES.length-1;i++){ var a = CIELO_CLAVES[i], b = CIELO_CLAVES[i+1]; if(h >= a[0] && h <= b[0]){ var k = (h-a[0])/(b[0]-a[0]); return [mezcla(a[1], b[1], k), mezcla(a[2], b[2], k)]; } } return ["#0b1630","#1a2a4a"]; }
+var NUBES = [{ x:0.1, y:0.08, e:1.3, v:0.012 }, { x:0.45, y:0.16, e:0.9, v:0.009 }, { x:0.78, y:0.06, e:1.1, v:0.014 }, { x:0.6, y:0.22, e:0.7, v:0.007 }];
+function dibujarCielo(ctx, dt){
+  var W = VIVO.canvas.width, H = VIVO.canvas.height, h = horaDecimal(), cs = cieloAhora();
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  var g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0, cs[0]); g.addColorStop(1, cs[1]); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  var noche = h >= 19 || h < 5.5; VIVO.tCielo = (VIVO.tCielo||0) + dt;
+  if(noche){ for(var i=0;i<60;i++){ var sx = (i*131)%W, sy = (i*71)%Math.round(H*0.42); var al = 0.45 + 0.55*Math.abs(Math.sin(VIVO.tCielo*(0.8+(i%5)*0.3) + i)); ctx.fillStyle = "rgba(255,255,255,"+al.toFixed(2)+")"; ctx.fillRect(sx, sy, i%7===0 ? 3 : 2, i%7===0 ? 3 : 2); } }
+  // sol de 6 a 18, luna de 18 a 6: recorren un arco de izquierda a derecha
+  var esSol = h >= 6 && h < 18, f = esSol ? (h-6)/12 : ((h >= 18 ? h-18 : h+6)/12), ax = W*(0.08 + 0.84*f), ay = H*0.42 - Math.sin(f*Math.PI)*H*0.36;
+  if(esSol){ var gl = ctx.createRadialGradient(ax, ay, 0, ax, ay, W*0.12); gl.addColorStop(0, "rgba(255,236,170,.9)"); gl.addColorStop(0.25, "rgba(255,220,120,.35)"); gl.addColorStop(1, "rgba(255,220,120,0)"); ctx.fillStyle = gl; ctx.fillRect(ax-W*0.12, ay-W*0.12, W*0.24, W*0.24); ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.arc(ax, ay, Math.max(10, W*0.022), 0, Math.PI*2); ctx.fill(); }
+  else { var r = Math.max(9, W*0.018); ctx.fillStyle = "#f4f1e6"; ctx.beginPath(); ctx.arc(ax, ay, r, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = cs[0]; ctx.beginPath(); ctx.arc(ax + r*0.45, ay - r*0.2, r*0.85, 0, Math.PI*2); ctx.fill(); }
+  // nubes que pasan
+  NUBES.forEach(function(n){ n.x += n.v*dt; if(n.x > 1.15) n.x = -0.15; var cx = n.x*W, cy = n.y*H, e = n.e*Math.max(18, W*0.03); ctx.fillStyle = noche ? "rgba(200,210,230,.14)" : "rgba(255,255,255,.75)"; [[0,0,1],[-0.9,0.25,0.75],[0.95,0.3,0.7],[0.3,-0.35,0.65],[-0.4,-0.2,0.6]].forEach(function(c){ ctx.beginPath(); ctx.arc(cx+c[0]*e, cy+c[1]*e, e*c[2], 0, Math.PI*2); ctx.fill(); }); });
+  ctx.restore();
+}
+// Camara: sigue al cliente que esta comprando y vuelve a la vista general cuando se va.
+var CAM = { z:1, fx:440, fy:250, tz:1, tfx:440, tfy:250 };
+function camaraObjetivo(){
+  var cli = VIVO.personas.filter(function(p){ return p !== VIVO.trabajador && p.viva; });
+  if(cli.length && !document.body.classList.contains("tv-lejos")){ var c = cli[cli.length-1]; var pc = isoP(c.x, c.y, 20), pm = isoP(4.9, 4.4, 20); CAM.tz = 1.45; CAM.tfx = (pc.x*0.55 + pm.x*0.45); CAM.tfy = (pc.y*0.55 + pm.y*0.45) - 10; }
+  else { CAM.tz = 1; CAM.tfx = ISO_W/2; CAM.tfy = ISO_H/2; }
+}
+function camaraAplicar(ctx, dt){
+  camaraObjetivo(); var k = Math.min(1, dt*2.2); CAM.z += (CAM.tz-CAM.z)*k; CAM.fx += (CAM.tfx-CAM.fx)*k; CAM.fy += (CAM.tfy-CAM.fy)*k;
+  ctx.translate(ISO_W/2, ISO_H/2); ctx.scale(CAM.z, CAM.z); ctx.translate(-CAM.fx, -CAM.fy);
+}
+// Celebraciones: letrero grande + confeti + lluvia de monedas.
+var FIESTA = { banner:null, particulas:[] };
+function celebrar(texto, tipo){
+  FIESTA.banner = { texto:texto, t:0, vida:4.5 };
+  var colores = ["#f76204","#2a78d6","#1baf7a","#eda100","#e34948","#6250d6","#ffffff"];
+  for(var i=0;i<(tipo==="monedas" ? 70 : 110); i++){ FIESTA.particulas.push({ x:ISO_W*(0.15+Math.random()*0.7), y:-20-Math.random()*120, vx:(Math.random()-0.5)*60, vy:40+Math.random()*90, rot:Math.random()*6.28, vr:(Math.random()-0.5)*6, t:0, vida:3+Math.random()*1.5, moneda:(tipo==="monedas") || Math.random() < 0.25, color:colores[i%colores.length], w:6+Math.random()*6, h:4+Math.random()*8 }); }
+  if(VIVO.sonido){ sonar(); setTimeout(sonar, 160); setTimeout(sonar, 320); }
+}
+function dibujarCelebraciones(ctx, dt){
+  if(!FIESTA.particulas.length && !FIESTA.banner) return;
+  FIESTA.particulas = FIESTA.particulas.filter(function(q){ q.t += dt; return q.t < q.vida && q.y < ISO_H + 40; });
+  FIESTA.particulas.forEach(function(q){ q.vy += 60*dt; q.x += q.vx*dt + Math.sin(q.t*4+q.rot)*20*dt; q.y += q.vy*dt; q.rot += q.vr*dt; ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.rot); ctx.globalAlpha = Math.min(1, (q.vida-q.t)/0.6);
+    if(q.moneda){ ctx.fillStyle = "#f5c242"; ctx.beginPath(); ctx.ellipse(0, 0, 6, 6*Math.abs(Math.cos(q.rot*2))+1, 0, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    else { ctx.fillStyle = q.color; ctx.fillRect(-q.w/2, -q.h/2, q.w, q.h); }
+    ctx.restore(); });
+  if(FIESTA.banner){ var b = FIESTA.banner; b.t += dt; if(b.t > b.vida){ FIESTA.banner = null; return; }
+    var k = b.t < 0.35 ? (b.t/0.35) : 1, esc = 1 + (1-k)*0.6, al = b.t > b.vida-0.6 ? (b.vida-b.t)/0.6 : 1;
+    ctx.save(); ctx.globalAlpha = al; ctx.translate(ISO_W/2, 70); ctx.scale(esc, esc);
+    ctx.font = "400 30px 'Anton', 'Arial Narrow', sans-serif"; var w = ctx.measureText(b.texto).width + 48;
+    ctx.fillStyle = "rgba(9,45,88,.92)"; ctx.beginPath(); ctx.roundRect(-w/2, -26, w, 52, 14); ctx.fill(); ctx.strokeStyle = "#f76204"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(b.texto, 0, 2); ctx.restore(); }
+}
+// Marcador en la pared: vendedores del dia con sus barras (se mueven suavemente).
+function dibujarMarcador(ctx){
+  var lista = VIVO.marcador || []; if(!lista.length) return;
+  var x = 7.2, y = -0.3, zTop = 88, zBot = 42; var a = isoP(x, y, zTop), b = isoP(x+4.2, y, zTop), c = isoP(x+4.2, y, zBot), d = isoP(x, y, zBot);
+  ctx.fillStyle = "#15202c"; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#f76204"; ctx.lineWidth = 2; ctx.stroke();
+  var max = Math.max.apply(null, lista.map(function(v){ return v.vendido; }).concat([1])); VIVO.marcadorAnim = VIVO.marcadorAnim || {};
+  ctx.save(); var dx = b.x - a.x, dy = b.y - a.y; var ang = Math.atan2(dy, dx); ctx.translate(a.x, a.y); ctx.rotate(ang); var ancho = Math.sqrt(dx*dx+dy*dy), alto = zTop - zBot;
+  ctx.font = "400 11px 'Anton', 'Arial Narrow', sans-serif"; ctx.fillStyle = "#f5c242"; ctx.textAlign = "left"; ctx.fillText("HOY · VENDEDORES", 8, 13);
+  lista.slice(0, 4).forEach(function(v, i){ var yy = 24 + i*10; var meta = v.vendido/max; var w = VIVO.marcadorAnim[v.nombre] === undefined ? 0 : VIVO.marcadorAnim[v.nombre]; w += (meta - w)*0.06; VIVO.marcadorAnim[v.nombre] = w;
+    ctx.font = "600 7.5px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = i===0 ? "#ffd166" : "#dde4ee"; ctx.textAlign = "left"; ctx.fillText((i===0 ? "★ " : "")+String(v.nombre).slice(0,10), 8, yy+6);
+    ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(66, yy, ancho-120, 6); ctx.fillStyle = i===0 ? "#f76204" : "#2a78d6"; ctx.fillRect(66, yy, Math.max(2, (ancho-120)*w), 6);
+    ctx.fillStyle = "#ffffff"; ctx.textAlign = "right"; ctx.fillText(compacto(v.vendido), ancho-8, yy+6); });
+  ctx.restore();
+}
 
 function vivoLayout(){
   var c = VIVO.canvas; if(!c) return; var ancho = c.clientWidth || 800, alto = Math.round(Math.min(ancho * 0.58, document.fullscreenElement ? window.innerHeight - 90 : 1e9));
@@ -852,9 +918,8 @@ function vivoLayout(){
 }
 function vivoDibujar(dt){
   var ctx = VIVO.ctx; if(!ctx) return; var noche = esNoche();
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); var cs = cieloColor(); var g = ctx.createLinearGradient(0,0,0,VIVO.canvas.height); g.addColorStop(0, cs[0]); g.addColorStop(1, cs[1]); ctx.fillStyle = g; ctx.fillRect(0,0,VIVO.canvas.width,VIVO.canvas.height);
-  if(noche){ ctx.fillStyle = "rgba(255,255,255,.8)"; for(var i=0;i<40;i++){ var sx = (i*97)%VIVO.canvas.width, sy = (i*53)%Math.round(VIVO.canvas.height*0.35); ctx.fillRect(sx, sy, 2, 2); } }
-  ctx.restore();
+  dibujarCielo(ctx, dt);
+  ctx.save(); camaraAplicar(ctx, dt);
   // calle y vereda (fuera del local)
   losange(ctx, -3, 9, 18, 2.2, PAL.calle, 0); losange(ctx, -3, 8.55, 18, 0.45, PAL.vereda, 0);
   ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.setLineDash([10,10]); ctx.lineWidth = 2; var l1 = isoP(-3,10.1,0), l2 = isoP(15,10.1,0); ctx.beginPath(); ctx.moveTo(l1.x,l1.y); ctx.lineTo(l2.x,l2.y); ctx.stroke(); ctx.setLineDash([]);
@@ -866,7 +931,8 @@ function vivoDibujar(dt){
   // letrero
   var lp = isoP(6, -0.3, 80); ctx.fillStyle = PAL.mostr; ctx.beginPath(); ctx.roundRect(lp.x-110, lp.y-16, 220, 30, 6); ctx.fill(); ctx.font = "400 18px 'Anton', 'Arial Narrow', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText(VIVO.nombreLocal || CFG.nombre.toUpperCase(), lp.x, lp.y+6);
   // ventilador de pared
-  VIVO.ventilador += dt*6; var vp = isoP(10.5, -0.3, 60); ctx.strokeStyle = "#6f7882"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(vp.x, vp.y, 11, 0, Math.PI*2); ctx.stroke(); for(var k=0;k<3;k++){ var ang = VIVO.ventilador + k*Math.PI*2/3; ctx.beginPath(); ctx.moveTo(vp.x, vp.y); ctx.lineTo(vp.x+Math.cos(ang)*9, vp.y+Math.sin(ang)*9); ctx.stroke(); }
+  VIVO.ventilador += dt*6; var vp = isoP(6.4, -0.3, 62); ctx.strokeStyle = "#6f7882"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(vp.x, vp.y, 11, 0, Math.PI*2); ctx.stroke(); for(var k=0;k<3;k++){ var ang = VIVO.ventilador + k*Math.PI*2/3; ctx.beginPath(); ctx.moveTo(vp.x, vp.y); ctx.lineTo(vp.x+Math.cos(ang)*9, vp.y+Math.sin(ang)*9); ctx.stroke(); }
+  dibujarMarcador(ctx);
   // elementos ordenados por profundidad
   var items = [];
   // cámara frigorífica
@@ -891,6 +957,8 @@ function vivoDibujar(dt){
   items.sort(function(a,b){ return a.d-b.d; }).forEach(function(it){ it.draw(); });
   if(noche){ ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = "rgba(10,20,50,.28)"; ctx.fillRect(0,0,VIVO.canvas.width,VIVO.canvas.height); ctx.restore(); var lz = isoP(5, 3.5, 90); var gl = ctx.createRadialGradient(lz.x, lz.y, 10, lz.x, lz.y, 260); gl.addColorStop(0, "rgba(255,230,160,.35)"); gl.addColorStop(1, "rgba(255,230,160,0)"); ctx.fillStyle = gl; ctx.fillRect(lz.x-300, lz.y-200, 600, 500); }
   dibujarEfectos(ctx, dt);
+  ctx.restore();
+  dibujarCelebraciones(ctx, dt);
   if(VIVO.cajaBrillo > 0) VIVO.cajaBrillo -= dt*1.5;
 }
 function vivoLoop(ts){
@@ -927,7 +995,7 @@ function clienteCompra(ev){
     { espera:1.4, bubble:(v.cliente||"Cliente").slice(0,22), fn:function(pp){ VIVO.pesoBalanza = kgTotal ? kgTotal.toFixed(2) : "1.00"; } },
     { espera:1.2, bubble:resumenItems(v.items).slice(0,30), fn:function(pp){ pp.bolsa = true; } },
     { espera:1.0, bubble:pendiente ? "Debe "+fmt(saldoPendiente(v)) : "Paga "+fmt(total)+(v.metodoPago&&v.metodoPago!=="efectivo" ? " · "+metodoLabel(v.metodoPago) : ""), color:pendiente ? "#c23b2c" : "#1d7a3e",
-      fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20); }, i*90); VIVO.cajaBrillo = 1.4; } efecto("texto", 6.7, 4.4, 60, "N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); } },
+      fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20); }, i*90); VIVO.cajaBrillo = 1.4; } efecto("texto", 6.7, 4.4, 60, "N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); if(ev.celebra) setTimeout(function(){ celebrar(ev.celebra, /grande/.test(ev.celebra) ? "monedas" : "confeti"); }, 300); } },
     { ruta:[puerta, { x:4.75, y:10.8 }] }
   ], alTerminar:function(pp){ pp.viva = false; } });
   var moto = VIVO.motos.find(function(m){ return m.nombre===(v.vendedor||""); });
@@ -960,8 +1028,20 @@ function vivoSincronizar(){
   var notas = E.ing.lista.slice().sort(function(a,b){ return num(a.creadoEn)-num(b.creadoEn); });
   var nuevas = [];
   notas.forEach(function(v){ if(!VIVO.vistos[v.id]){ VIVO.vistos[v.id] = true; nuevas.push(v); } });
-  if(primera){ nuevas.slice(-3).forEach(function(v){ VIVO.cola.push({ tipo:"venta", v:v, silencio:true }); }); }
-  else nuevas.forEach(function(v){ VIVO.cola.push({ tipo:"venta", v:v }); });
+  var vendidoHoy = notas.reduce(function(s,v){ return s+num(v.total); }, 0), maxHoy = notas.reduce(function(m,v){ return Math.max(m, num(v.total)); }, 0);
+  var metaDia = (S.config.metas.venta > 0) ? S.config.metas.venta/ultimoDia(hp.anio, hp.mes) : 0;
+  if(primera){ nuevas.slice(-3).forEach(function(v){ VIVO.cola.push({ tipo:"venta", v:v, silencio:true }); }); VIVO.vendidoAnt = vendidoHoy; VIVO.maxAnt = maxHoy; }
+  else {
+    var acum = VIVO.vendidoAnt || 0, maxAnt = VIVO.maxAnt || 0;
+    nuevas.forEach(function(v){ var ev = { tipo:"venta", v:v }; var tot = num(v.total); acum += tot;
+      if(metaDia > 0 && (acum - tot) < metaDia && acum >= metaDia) ev.celebra = "¡Meta del día cumplida! "+fmt(acum);
+      else if(tot > maxAnt && maxAnt > 0) ev.celebra = "¡Venta más grande del día! "+fmt(tot);
+      else if(Math.floor(acum/1000) > Math.floor((acum - tot)/1000)) ev.celebra = "¡Pasamos los "+fmt(Math.floor(acum/1000)*1000)+" hoy!";
+      if(tot > maxAnt) maxAnt = tot; VIVO.cola.push(ev); });
+    VIVO.vendidoAnt = vendidoHoy; VIVO.maxAnt = maxHoy;
+  }
+  var porVend = {}; notas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; var g = porVend[k] || (porVend[k] = { nombre:k, vendido:0, notas:0 }); g.vendido += num(v.total); g.notas++; });
+  VIVO.marcador = Object.keys(porVend).map(function(k){ return porVend[k]; }).sort(function(a,b){ return b.vendido-a.vendido; });
   Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.tipoPago!=="credito") return; var ab = montoAbonado(v); var ant = VIVO.abonos[id]; VIVO.abonos[id] = ab; if(!primera && ant !== undefined && ab > ant + 0.009){ var ult = abonosEfectivos(v)[abonosEfectivos(v).length-1]; if(ult && String(ult.fecha||"").slice(0,10)===f) VIVO.cola.push({ tipo:"cobro", monto:ab-ant, cliente:v.cliente }); } });
   Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado || e.fecha !== f || !e.kardex) return; var k = "eg_"+id; if(VIVO.vistos[k]) return; VIVO.vistos[k] = true; if(primera) return; if(e.tipo==="merma") VIVO.cola.push({ tipo:"merma", kg:e.kardex.kg, producto:e.kardex.producto }); else if(e.tipo!=="ajuste") VIVO.cola.push({ tipo:"compra", kg:e.kardex.kg, producto:e.kardex.producto }); });
   // stock según kardex
@@ -1023,7 +1103,7 @@ function anunciar(ev){
 }
 function vivoDemo(){
   var v = { id:"demo", cliente:"Cliente de ejemplo", vendedor:(VIVO.motos[0]||{}).nombre||"", total:148.5, items:[{ producto:"POLLO ENTERO", kg:15, cantidad:5, precio:9.9 }], tipoPago:"contado", metodoPago:"efectivo", pagado:true, serie:"X", correlativo:0, creadoEn:Date.now() };
-  VIVO.cola.push({ tipo:"venta", v:v });
+  VIVO.cola.push({ tipo:"venta", v:v, celebra:"¡Así se celebra una venta grande!" });
 }
 setInterval(function(){ if(S.user && UI.vista==="envivo") vivoRefrescar(); }, 60000);
 

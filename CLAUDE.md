@@ -23,6 +23,9 @@
   cambiar de vista o periodo, botón claro/oscuro (`data-theme`, guardado en localStorage), mapa de ventas con Leaflet 1.9.4 (cdnjs + teselas
   de OpenStreetMap; puntos por nota con `ubicacion`), calendario de calor del mes (SVG), línea de utilidad acumulada en el gráfico, gráficos
   dentro del PDF (SVG → JPEG) y modo TV en Rico Pollo en vivo (`body.tv` + pantalla completa).
+- C11/C12 (18-oct-2026): modo oscuro con variables propias (`--band`, `--sel`, `body.oscuro`); cabecera solo "RICO POLLO". Escena en vivo: cámara que
+  sigue al cliente (`CAM`), celebraciones (`celebrar()`: meta del día = meta mensual / días del mes, venta más grande del día, cada S/ 1,000),
+  marcador de vendedores en la pared (`VIVO.marcador`), cielo real por hora (`CIELO_CLAVES`, sol/luna/nubes/estrellas).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
