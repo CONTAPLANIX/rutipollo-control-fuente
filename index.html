@@ -230,7 +230,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C4";
+var APP_VERSION = "18 oct · C5";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -485,7 +485,7 @@ function renderTablero(){
   var maxCat = cats.length ? cats[0].monto : 0;
   var porCobrado = METODOS.map(function(m){ return { m:m, v:ing.cobrado[m] }; }).filter(function(x){ return x.v > 0.009 || x.m==="efectivo"; });
   var maxM = Math.max.apply(null, porCobrado.map(function(x){ return x.v; }).concat([1]));
-  var html = '<h1 class="section-title">Tablero</h1><p class="section-sub">Lo que entró por las notas de la app, menos lo que salió por los gastos registrados aquí. Montos en soles.</p>'
+  var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px;"><h1 class="section-title" style="margin:0;">Tablero</h1><button class="btn btn-primary" data-action="vista" data-val="envivo" style="margin-left:auto;"><span class="live-dot" style="background:#fff;box-shadow:none;animation:none;"></span>Ver la tienda en vivo</button></div><p class="section-sub">Lo que entró por las notas de la app, menos lo que salió por los gastos registrados aquí. Montos en soles.</p>'
     + periodoBarHtml()
     + '<div class="toolbar"><div class="seg small"><button class="'+(UI.utilBase==="cobrado"?'on':'')+'" data-action="util-base" data-val="cobrado">Utilidad con lo cobrado</button><button class="'+(UI.utilBase==="vendido"?'on':'')+'" data-action="util-base" data-val="vendido">Utilidad con lo vendido</button></div><span class="sp"></span>'
     + '<button class="btn btn-sm" data-action="exportar-excel">Descargar Excel</button><button class="btn btn-sm" data-action="exportar-pdf">Descargar PDF</button></div>'
