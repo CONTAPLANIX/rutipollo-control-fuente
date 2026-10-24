@@ -103,7 +103,7 @@
   .sidenav .foot{ margin-top:auto; font-size:11px; color:var(--ink-soft); padding:8px 12px; line-height:1.5; }
   .main{ flex:1; min-width:0; padding:20px 22px 90px; max-width:1180px; margin:0 auto; width:100%; }
   .tabbar{ display:none; position:fixed; left:0; right:0; bottom:0; background:var(--paper-alt); border-top:1px solid var(--line); z-index:20; box-shadow:0 -6px 16px rgba(9,45,88,.08); padding-bottom:env(safe-area-inset-bottom); }
-  .tab-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none; padding:8px 4px 7px; font-size:10.5px; font-weight:500; color:var(--ink-soft); border-top:2px solid transparent; }
+  .tab-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none; padding:8px 2px 7px; font-size:9.5px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500; color:var(--ink-soft); border-top:2px solid transparent; }
   .tab-btn .ic{ font-size:19px; }
   .tab-btn.active{ color:var(--accent); border-top-color:var(--accent); }
   @media (max-width:860px){
@@ -314,7 +314,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "24 oct · C26";
+var APP_VERSION = "24 oct · C27";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -345,6 +345,7 @@ var ICONOS = {
   mapa:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
   tv:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   tinas:'<path d="M3 9h18l-1.5 9h-15zM7 9V7a5 5 0 0 1 10 0v2"/>',
+  compras:'<path d="M3 4h2l2.4 11h11l2-7H7"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
   alarma:'<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
   vitrina:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 12h18M12 5v14"/>',
   almacen:'<path d="M3 4h18M3 10h18M3 16h18M5 4v16M19 4v16"/><circle cx="9" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/>',
@@ -396,7 +397,7 @@ var hoy = todayISO(), hp = parseFecha(hoy);
 var CONFIG_BASE = { alertas:{ deudaCliente:500, stockMin:100, cajaDif:20, tinasDias:7 }, metas:{ venta:0, utilidad:0 }, recurrentes:[], mayoristas:[], trabajadores:[], tinas:{ total:0 } };
 var S = { db:null, user:null, usuarios:[], ventas:{}, egresos:{}, productos:[], categorias:CATEGORIAS_BASE.slice(), config:JSON.parse(JSON.stringify(CONFIG_BASE)), cierres:{}, tinas:{}, nombres:[], aniosCargados:{}, unsubs:[], servicio:{}, listo:false, online:navigator.onLine };
 var UI = { vista:"tablero", per:{ tipo:"mes", anio:hp.anio, mes:hp.mes, dia:hoy, desde:hoy.slice(0,8)+"01", hasta:hoy },
-  utilBase: lsGet("utilBase","cobrado"), gastosCat:"", gastosBuscar:"", verEliminados:false, kardexProd:"", cajaDia:hoy, cajaReal:"", cajaNota:"",
+  utilBase: lsGet("utilBase","cobrado"), gastosCat:"", gastosBuscar:"", mercProd:"", mercBuscar:"", verEliminados:false, kardexProd:"", cajaDia:hoy, cajaReal:"", cajaNota:"",
   gateNombre:"", gateError:"", gateEscribir:false, gateCargando:false, gateMode:"login" };
 
 // ---------- tema claro / oscuro ----------
@@ -606,9 +607,9 @@ function render(){
   if(UI.vista==="envivo" && window.__vistaAnt==="envivo" && document.getElementById("vivo-canvas")){ vivoRefrescar(); return; }
   var root = document.getElementById("app");
   var nAv = calcAlertas().length;
-  var navs = [["tablero",ico("tablero"),"Tablero"],["envivo",ico("envivo"),"Rico Pollo"],["gastos",ico("gastos"),"Gastos"],["kardex",ico("kardex"),"Kardex"],["tinas",ico("tinas"),"Tinas"],["caja",ico("caja"),"Caja"],["avisos",ico("avisos"),"Avisos", nAv],["ajustes",ico("ajustes"),"Ajustes"]];
-  function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+n[2]+'</span>'+(n[3] ? '<span class="badge">'+n[3]+'</span>' : '')+'</button>'; }).join(""); }
-  var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="kardex" ? renderKardex() : UI.vista==="tinas" ? renderTinas() : UI.vista==="caja" ? renderCaja() : UI.vista==="avisos" ? renderAvisos() : renderAjustes();
+  var navs = [["tablero",ico("tablero"),"Tablero"],["envivo",ico("envivo"),"Rico Pollo"],["gastos",ico("gastos"),"Gastos"],["mercaderias",ico("compras"),"Mercaderías",0,"Compras"],["kardex",ico("kardex"),"Kardex"],["tinas",ico("tinas"),"Tinas"],["caja",ico("caja"),"Caja"],["avisos",ico("avisos"),"Avisos", nAv],["ajustes",ico("ajustes"),"Ajustes"]];
+  function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+(cls==="tab-btn" && n[4] ? n[4] : n[2])+'</span>'+(n[3] ? '<span class="badge">'+n[3]+'</span>' : '')+'</button>'; }).join(""); }
+  var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="mercaderias" ? renderMercaderias() : UI.vista==="kardex" ? renderKardex() : UI.vista==="tinas" ? renderTinas() : UI.vista==="caja" ? renderCaja() : UI.vista==="avisos" ? renderAvisos() : renderAjustes();
   root.innerHTML = ''
     + '<div class="topbar"><div class="brand"><img class="brand-logo" src="assets/logo.png" alt=""><div class="brand-text"><strong>'+CFG.titulo+'</strong></div></div>'
     + '<div class="topbar-right"><span class="user-badge"><span class="sync-dot '+(S.online?'ok':'warn')+'" title="'+(S.online?'Conectado':'Sin internet')+'"></span><span class="nom">Hola, <b>'+escapeHtml(S.user.nombre)+'</b></span></span>'
@@ -910,7 +911,7 @@ function guardarRutaHoy(){
   var nombres = [].slice.call(document.querySelectorAll(".ruta-chk:checked")).map(function(c){ return c.value; });
   S.config.rutaHoy = { fecha:todayISO(), nombres:nombres }; closeOverlay();
   S.db.doc("control/config").set({ rutaHoy:S.config.rutaHoy, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Ruta de hoy: "+(nombres.join(", ")||"nadie")); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
-  VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; var rb = document.querySelector('[data-action="ruta-hoy"]'); if(rb) rb.textContent = "Ruta de hoy: "+(nombres.join(", ")||"nadie"); vivoRefrescar();
+  VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; var rb = document.querySelector('.vivo-bar [data-action="ruta-hoy"]'); if(rb) rb.textContent = "Ruta de hoy: "+(nombres.join(", ")||"nadie"); vivoRefrescar();
 }
 function dibujarEfectos(ctx, dt){
   VIVO.efectos = VIVO.efectos.filter(function(e){ e.t += dt; return e.t < e.vida; });
@@ -1419,7 +1420,7 @@ function vivoPaso(ts){
 }
 function moverMoto(m, dt){
   (VIVO.ruteros||[]).forEach(function(r){ if(VIVO.motos[r.camion||0] === m) r.oculto = !!m.fuera; });
-  if(m.fuera){ m.t += dt; if(m.t < 2.2){ m.x += 4*dt; } else if(m.t < m.dur){ m.x = 20; } else if(m.t < m.dur + 2.6){ if(m.x > 19) m.x = -4; m.x += 4*dt; if(m.x >= m.px){ m.x = m.px; m.fuera = false; } } else { m.x = m.px; m.fuera = false; } }
+  if(m.fuera){ m.t += dt; if(m.t < 2.2){ m.x += 4*dt; } else if(m.t < m.dur){ m.x = 20; } else if(m.t < m.dur + (m.px + 4)/4 + 0.4){ if(m.x > 19) m.x = -4; m.x += 4*dt; if(m.x >= m.px){ m.x = m.px; m.fuera = false; } } else { m.x = m.px; m.fuera = false; } }
 }
 function moverCamion(c, dt){
   c.t += dt; if(c.fase===0){ c.x += 3.2*dt; if(c.x >= 1.5){ c.fase = 1; c.t = 0; } } else if(c.fase===1){ if(c.t > 2.6){ c.fase = 2; c.texto = null; } } else { c.x += 3.4*dt; if(c.x > 17) c.viva = false; }
@@ -1768,6 +1769,9 @@ function guardarGasto(id){
   var docId = id || genId("eg");
   S.egresos[docId] = Object.assign({}, obj, { id:docId });
   S.db.collection("egresos").doc(docId).set(obj).then(function(){ toast(id ? "Gasto actualizado" : "Gasto registrado"); }).catch(function(e){ toast("No se pudo guardar: revisa tu internet"); console.error(e); });
+  if(id) mermasDeCompra(id).forEach(function(mm){ // la merma "al recibir" sigue a la compra: mismo producto y fecha; si la compra deja de ser mercaderia, la merma se quita
+    var cm = conK ? { fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, kardex:{ producto:prod.toUpperCase(), kg:num(mm.kardex ? mm.kardex.kg : 0) }, actualizadoEn:ahora } : { eliminado:true, eliminadoPor:S.user.nombre, eliminadoEn:ahora };
+    Object.assign(mm, cm); S.db.collection("egresos").doc(mm.id).set(cm, { merge:true }).catch(function(e){ console.error(e); }); });
   if(mkg > 0 && !id){ // merma al recibir: se descuenta del Kardex en el mismo momento de la compra
     var mid = genId("mm"), mot = (document.getElementById("g-merma-motivo")||{}).value || MOTIVOS_MERMA[4];
     var mobj = { tipo:"merma", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:"Merma", descripcion:mot+" · al recibir la compra"+(desc ? " ("+desc+")" : ""), motivo:mot, monto:0, metodo:"efectivo", kardex:{ producto:prod.toUpperCase(), kg:mkg }, compraId:docId, foto:null, registradoPor:S.user.nombre, creadoEn:ahora+1, actualizadoEn:ahora, eliminado:false };
@@ -1775,6 +1779,7 @@ function guardarGasto(id){
   }
   closeOverlay(); render();
 }
+function mermasDeCompra(id){ return Object.keys(S.egresos).map(function(k){ return S.egresos[k]; }).filter(function(x){ return x.tipo==="merma" && x.compraId===id; }); }
 function eliminarGasto(id, restaurar, yaConfirmado){
   var e = S.egresos[id]; if(!e) return;
   if(yaConfirmado) restaurar = false;
@@ -1782,10 +1787,43 @@ function eliminarGasto(id, restaurar, yaConfirmado){
   var cambio = restaurar ? { eliminado:false, restauradoPor:S.user.nombre, restauradoEn:Date.now() } : { eliminado:true, eliminadoPor:S.user.nombre, eliminadoEn:Date.now() };
   Object.assign(e, cambio);
   S.db.collection("egresos").doc(id).set(cambio, { merge:true }).then(function(){ toast(restaurar ? "Gasto restaurado" : "Gasto eliminado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  if(e.tipo==="gasto") mermasDeCompra(id).forEach(function(mm){ Object.assign(mm, cambio); S.db.collection("egresos").doc(mm.id).set(cambio, { merge:true }).catch(function(){}); }); // la merma al recibir va y vuelve con su compra
   closeOverlay(); render();
 }
 function abrirFoto(id){ var e = S.egresos[id]; if(!e || !e.foto) return; document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2>Comprobante · '+escapeHtml(e.descripcion||e.categoria)+' · '+fmt(e.monto)+'</h2><img src="'+e.foto+'" alt="comprobante" style="max-width:100%;border-radius:8px;"><div class="actions-row"><a class="btn" href="'+e.foto+'" download="comprobante_'+e.fecha+'.jpg">Descargar</a><button class="btn" data-action="cerrar-overlay">Cerrar</button></div></div></div>'; }
 
+// ---------- MERCADERIAS: compras de mercaderia (gastos que entran al Kardex) ----------
+function proveedorDe(e){ if(e.proveedor && e.proveedor.razonSocial) return String(e.proveedor.razonSocial); var d = String(e.descripcion||"").replace(/\s*·\s*[A-Z0-9]+-\d+.*$/i, "").replace(/^Compra de\s+/i, "").trim(); if(!d || (e.kardex && normalizar(d)===normalizar(e.kardex.producto))) return "(sin proveedor)"; return d; }
+function calcCompras(r){
+  var lista = [], mermasPorCompra = {};
+  Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado) return; if(e.tipo==="merma" && e.compraId){ mermasPorCompra[e.compraId] = (mermasPorCompra[e.compraId]||0) + num(e.kardex ? e.kardex.kg : 0); } });
+  Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado || e.tipo!=="gasto" || !e.kardex || !e.kardex.producto) return; var f = String(e.fecha||"").slice(0,10); if(f < r.desde || f > r.hasta) return;
+    lista.push({ e:e, fecha:f, proveedor:proveedorDe(e), producto:String(e.kardex.producto), kg:num(e.kardex.kg), monto:num(e.monto), unidad:unidadDe(e.kardex.producto), merma:mermasPorCompra[e.id]||0 }); });
+  lista.sort(function(a,b){ return (a.fecha<b.fecha?1:a.fecha>b.fecha?-1:0) || (num(b.e.creadoEn)-num(a.e.creadoEn)); });
+  var porProd = {}, porProv = {};
+  lista.forEach(function(c){ var k = normalizar(c.producto); var g = porProd[k] || (porProd[k] = { nombre:c.producto, kg:0, monto:0, n:0, merma:0, unidad:c.unidad }); g.kg += c.kg; g.monto += c.monto; g.n++; g.merma += c.merma;
+    var kp = normalizar(c.proveedor); var gp = porProv[kp] || (porProv[kp] = { nombre:c.proveedor, kg:0, monto:0, n:0, ultima:"" }); gp.kg += c.kg; gp.monto += c.monto; gp.n++; if(c.fecha > gp.ultima) gp.ultima = c.fecha; });
+  return { lista:lista, total:lista.reduce(function(s,c){ return s+c.monto; }, 0), kg:lista.reduce(function(s,c){ return s+c.kg; }, 0), merma:lista.reduce(function(s,c){ return s+c.merma; }, 0),
+    porProd:Object.keys(porProd).map(function(k){ return porProd[k]; }).sort(function(a,b){ return b.monto-a.monto; }), porProv:Object.keys(porProv).map(function(k){ return porProv[k]; }).sort(function(a,b){ return b.monto-a.monto; }) };
+}
+function renderMercaderias(){
+  var r = periodo(), C = calcCompras(r), lista = C.lista.slice();
+  if(UI.mercProd) lista = lista.filter(function(c){ return normalizar(c.producto)===normalizar(UI.mercProd); });
+  if(UI.mercBuscar){ var q = normalizar(UI.mercBuscar); lista = lista.filter(function(c){ return normalizar(c.proveedor+" "+c.producto+" "+(c.e.descripcion||"")+" "+(c.e.comprobante||"")).indexOf(q) > -1; }); }
+  var totL = lista.reduce(function(s,c){ return s+c.monto; }, 0), kgL = lista.reduce(function(s,c){ return s+c.kg; }, 0);
+  var rows = lista.map(function(c){ var e = c.e; return '<tr><td style="white-space:nowrap;">'+fechaCorta(c.fecha)+' <span class="kard-sub">'+c.fecha.slice(0,4)+'</span></td><td>'+escapeHtml(c.proveedor)+(e.comprobante ? '<div class="kard-sub">'+escapeHtml(e.comprobante)+(e.proveedor && e.proveedor.ruc ? ' · RUC '+escapeHtml(e.proveedor.ruc) : '')+'</div>' : '')+'</td><td><strong>'+escapeHtml(c.producto)+'</strong> <span class="kard-sub">'+escapeHtml(e.categoria||"")+'</span></td><td class="num">'+kgTxt(c.kg)+' <span class="kard-sub">'+escapeHtml(c.unidad)+'</span></td><td class="num">'+(c.kg ? n2(c.monto/c.kg) : '—')+'</td><td class="num negv">'+fmt(c.monto)+'</td><td>'+tagMetodo(e.metodo)+'</td><td class="num '+(c.merma ? 'negv' : '')+'">'+(c.merma ? '−'+kgTxt(c.merma) : '—')+'</td><td class="kard-sub">'+escapeHtml(e.registradoPor||"")+'</td><td style="white-space:nowrap;">'+(e.foto ? '<button class="btn btn-sm btn-ghost" data-action="ver-foto" data-id="'+e.id+'" title="Ver comprobante">📷</button>' : '')+'<button class="btn btn-sm" data-action="editar-gasto" data-id="'+e.id+'">Editar</button></td></tr>'; }).join("");
+  var prods = C.porProd.map(function(g){ return g.nombre; }); if(UI.mercProd && prods.indexOf(UI.mercProd) < 0) prods.push(UI.mercProd);
+  return '<h1 class="section-title">Mercaderías</h1><p class="section-sub">Todas las compras de mercadería (pollo, embutidos, cremas, huevos…) registradas en Gastos con "entra al Kardex". Aquí se ven por fecha, por producto y por proveedor; el Kardex muestra lo que queda.</p>'
+    + periodoBarHtml()
+    + '<div class="toolbar"><button class="btn btn-primary" data-action="nuevo-gasto-kardex">+ Registrar compra</button><button class="btn" data-action="importar-archivo">Importar SIRE</button><span class="sp"></span>'
+    + '<label class="sel-wrap"><span>Producto</span><select id="merc-prod"><option value="">Todos</option>'+prods.map(function(n){ return '<option value="'+escapeHtml(n)+'"'+(n===UI.mercProd?' selected':'')+'>'+escapeHtml(n)+'</option>'; }).join("")+'</select></label>'
+    + '<input type="search" id="merc-buscar" placeholder="Buscar proveedor, producto…" value="'+escapeHtml(UI.mercBuscar)+'" style="min-width:200px;"></div>'
+    + '<div class="stat-row"><div class="stat egr"><div class="label">Comprado · '+escapeHtml(r.titulo)+'</div><div class="value" data-anim="'+r2(C.total)+'">'+fmt(C.total)+'</div><div class="sub">'+C.lista.length+' compra'+(C.lista.length===1?'':'s')+'</div></div><div class="stat"><div class="label">Kilos / unidades comprados</div><div class="value">'+kgTxt(C.kg)+'</div><div class="sub">costo promedio '+(C.kg ? 'S/ '+n2(C.total/C.kg) : '—')+'</div></div><div class="stat"><div class="label">Proveedores</div><div class="value">'+C.porProv.length+'</div><div class="sub">'+(C.porProv[0] ? 'el principal: '+escapeHtml(C.porProv[0].nombre) : '')+'</div></div><div class="stat'+(C.merma ? ' egr' : '')+'"><div class="label">Merma al recibir</div><div class="value">'+kgTxt(C.merma)+'</div><div class="sub">kg descontados del Kardex al recibir</div></div></div>'
+    + '<div class="cols-2"><div class="card"><h2>Por producto <span class="kard-sub">toca para filtrar</span></h2>'+(C.porProd.length ? '<ul class="ledger">'+C.porProd.map(function(g){ return '<li data-action="merc-prod" data-val="'+escapeHtml(g.nombre)+'" style="cursor:pointer;"><span class="lk">'+escapeHtml(g.nombre.toLowerCase())+' <span class="kard-sub">'+g.n+' compra'+(g.n===1?'':'s')+' · '+kgTxt(g.kg)+' '+escapeHtml(g.unidad)+(g.merma ? ' · merma '+kgTxt(g.merma) : '')+'</span></span><span class="lv">'+fmt(g.monto)+' <span class="kard-sub">'+(g.kg ? 'S/ '+n2(g.monto/g.kg)+'/'+escapeHtml(g.unidad) : '')+'</span></span><span class="lb"><div class="bar-mini"><i style="width:'+pct(g.monto, C.porProd[0].monto).toFixed(0)+'%"></i></div></span></li>'; }).join("")+'</ul>' : '<p class="empty">Sin compras en este periodo.</p>')+'</div>'
+    + '<div class="card"><h2>Por proveedor</h2>'+(C.porProv.length ? '<ul class="ledger">'+C.porProv.map(function(g){ return '<li><span class="lk">'+escapeHtml(g.nombre)+' <span class="kard-sub">'+g.n+' compra'+(g.n===1?'':'s')+' · última '+fechaCorta(g.ultima)+'</span></span><span class="lv">'+fmt(g.monto)+' <span class="kard-sub">'+kgTxt(g.kg)+' kg</span></span><span class="lb"><div class="bar-mini ok"><i style="width:'+pct(g.monto, C.porProv[0].monto).toFixed(0)+'%"></i></div></span></li>'; }).join("")+'</ul>' : '<p class="empty">Sin proveedores todavía.</p>')+'</div></div>'
+    + '<div class="card"><h2>Compras '+(UI.mercProd ? 'de '+escapeHtml(UI.mercProd.toLowerCase())+' ' : '')+'<span class="mono">'+fmt(totL)+' · '+kgTxt(kgL)+' kg</span>'+(UI.mercProd ? ' <button class="btn btn-sm btn-ghost" data-action="merc-prod" data-val="">Ver todos</button>' : '')+'</h2><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Producto</th><th class="num">Kg / und</th><th class="num">S/ por kg</th><th class="num">Monto</th><th>Pago</th><th class="num">Merma</th><th>Por</th><th></th></tr></thead><tbody>'
+    + (rows || '<tr><td colspan="10"><p class="empty">Sin compras en este periodo.<br><button class="btn btn-sm" data-action="nuevo-gasto-kardex" style="margin-top:8px;">Registrar una compra</button></p></td></tr>')+'</tbody></table></div></div>';
+}
 // ---------- KARDEX ----------
 function renderKardex(){
   var r = periodo(), lista = calcKardex(r);
@@ -2312,7 +2350,10 @@ function conectarDatos(){
   S.unsubs.push(db.collection("egresos").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.egresos[ch.doc.id]; else S.egresos[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("egresos", e); toast("No se pudieron leer los gastos"); }));
   S.unsubs.push(db.collection("tinas").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.tinas[ch.doc.id]; else S.tinas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("tinas", e); }));
   S.unsubs.push(db.doc("control/config").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null;
-    if(d && Array.isArray(d.categorias) && d.categorias.length){ S.categorias = d.categorias.map(String); var faltan = CATEGORIAS_NUEVAS.filter(function(c){ return !S.categorias.some(function(x){ return normalizar(x)===normalizar(c); }); }); if(faltan.length){ S.categorias = S.categorias.concat(faltan); db.doc("control/config").set({ categorias:S.categorias }, { merge:true }).catch(function(){}); } }
+    if(d && Array.isArray(d.categorias) && d.categorias.length){ S.categorias = d.categorias.map(String);
+      if(!(num(d.catsV) >= 26)){ // una sola vez: agrega las categorias nuevas de C26 (si despues las quitan, no vuelven)
+        var faltan = CATEGORIAS_NUEVAS.filter(function(c){ return !S.categorias.some(function(x){ return normalizar(x)===normalizar(c); }); }); if(faltan.length) S.categorias = S.categorias.concat(faltan);
+        db.doc("control/config").set({ categorias:S.categorias, catsV:26 }, { merge:true }).catch(function(){}); } }
     if(d && d.alertas) Object.keys(CONFIG_BASE.alertas).forEach(function(k){ if(d.alertas[k] !== undefined) S.config.alertas[k] = num(d.alertas[k]); });
     if(d && d.metas) Object.keys(CONFIG_BASE.metas).forEach(function(k){ if(d.metas[k] !== undefined) S.config.metas[k] = num(d.metas[k]); });
     if(d && d.rutaHoy) S.config.rutaHoy = d.rutaHoy;
@@ -2393,6 +2434,7 @@ document.addEventListener("click", function(ev){
   if(action==="rec-registrar-todos"){ recurrentesPendientes().filter(function(x){ return !x.hecho && !x.completo; }).forEach(function(x){ registrarRecurrente(x.rc.id); }); render(); return; }
   if(action==="rec-agregar"){ var rd = document.getElementById("rec-desc").value.trim(), rm = r2(document.getElementById("rec-monto").value), rdia = Math.max(1, Math.min(31, Number(document.getElementById("rec-dia").value)||1)); if(!rd || !(rm > 0)){ toast("Escriba la descripción y el monto"); return; } var lista = (S.config.recurrentes||[]).slice(); var rcu = Math.max(0, Math.round(num((document.getElementById("rec-cuotas")||{}).value))); lista.push({ id:genId("rc"), descripcion:rd, categoria:document.getElementById("rec-cat").value, monto:rm, dia:rdia, metodo:document.getElementById("rec-metodo").value, cuotas:rcu || null }); S.config.recurrentes = lista; S.db.doc("control/config").set({ recurrentes:lista, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Gasto fijo agregado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); return; }
   if(action==="rec-quitar"){ if(!confirm("¿Quitar este gasto fijo? Los gastos ya registrados no se borran.")) return; var l2 = (S.config.recurrentes||[]).filter(function(x){ return x.id!==id; }); S.config.recurrentes = l2; S.db.doc("control/config").set({ recurrentes:l2, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){}); render(); return; }
+  if(action==="merc-prod"){ UI.mercProd = val||""; render(); return; }
   if(action==="nueva-tina"){ abrirFormTina(val||"salida", t.getAttribute("data-cliente")||""); return; }
   if(action==="tina-tipo"){ document.querySelectorAll("#t-tipo .pay-opt").forEach(function(b){ b.classList.toggle("on", b===t); }); return; }
   if(action==="guardar-tina"){ guardarTina(); return; }
@@ -2425,11 +2467,13 @@ document.addEventListener("change", function(ev){
   else if(id==="per-desde"){ if(el.value){ UI.per.desde = el.value; asegurarAnios(); render(); } }
   else if(id==="per-hasta"){ if(el.value){ UI.per.hasta = el.value; asegurarAnios(); render(); } }
   else if(id==="gastos-cat"){ UI.gastosCat = el.value; render(); }
+  else if(id==="merc-prod"){ UI.mercProd = el.value; render(); }
   else if(id==="caja-dia"){ if(el.value){ UI.cajaDia = el.value; UI.cajaReal = ""; UI.cajaNota = ""; asegurarAnios(); cargarAnio(Number(el.value.slice(0,4)), false); render(); } }
 });
 document.addEventListener("input", function(ev){
   var el = ev.target, id = el.id;
-  if(id==="gastos-buscar"){ UI.gastosBuscar = el.value; var tb = document.querySelector(".main"); clearTimeout(window.__bq); window.__bq = setTimeout(function(){ render(); var b = document.getElementById("gastos-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
+  if(id==="merc-buscar"){ UI.mercBuscar = el.value; clearTimeout(window.__mq); window.__mq = setTimeout(function(){ render(); var b = document.getElementById("merc-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
+  else if(id==="gastos-buscar"){ UI.gastosBuscar = el.value; var tb = document.querySelector(".main"); clearTimeout(window.__bq); window.__bq = setTimeout(function(){ render(); var b = document.getElementById("gastos-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
   else if(id==="caja-real"){ UI.cajaReal = el.value; clearTimeout(window.__cq); window.__cq = setTimeout(function(){ render(); var r = document.getElementById("caja-real"); if(r){ r.focus(); } }, 600); }
   else if(id==="caja-nota"){ UI.cajaNota = el.value; }
 });
