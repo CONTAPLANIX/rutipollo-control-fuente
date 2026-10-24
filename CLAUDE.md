@@ -56,6 +56,10 @@
   virtual (`ZONAS`, `vivo3dZonasCrear` con Raycaster, brillo al pasar el mouse, borde rojo pulsante si la zona tiene aviso, tarjeta `#vivo-zona-card`
   con `zonaInfoHtml`, barra de iconos `vivoZonasBarHtml`, podio de vendedores `podioHtml`). Reglas: `tinas` solo admin (demo desplegada;
   rutipollo-ventas pendiente si no se desplegó). Respaldo diario incluye `tinas`.
+- C27 (24-oct-2026): pestaña **Mercaderías** (`calcCompras`, `renderMercaderias`, `proveedorDe`): todas las compras con Kardex por fecha,
+  por producto y por proveedor, filtro `UI.mercProd` y buscador `UI.mercBuscar`; en el celular la pestaña se llama "Compras" (5.º elemento de `navs`).
+  Arreglos tras revisión: la merma "al recibir" (`compraId`) se edita/elimina/restaura junto con su compra (`mermasDeCompra`); la migración
+  de categorías corre una sola vez (`control/config.catsV = 26`); el camión 2 vuelve hasta su sitio; `guardarRutaHoy` actualiza el botón de la barra.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
