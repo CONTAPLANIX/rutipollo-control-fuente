@@ -44,6 +44,18 @@
   detecta columnas por título (fecha, serie/número, RUC y nombre del proveedor evitando las de la propia empresa, total, moneda/TC),
   sugiere categoría (`categoriaSugerida`), marca duplicados por RUC+comprobante o fecha+monto, guarda egresos con `origen:"importado"`,
   `comprobante`, `proveedor{ruc,razonSocial}`. Gastos fijos del mes: `control/config.recurrentes[]`, se registran con `recurrenteId`.
+- C26 (24-oct-2026): pestaña **Tinas** (colección `tinas/{id}` {tipo salida|entrada, cliente, cantidad, fecha, anio, mes, dia, nota, registradoPor,
+  creadoEn, eliminado}; saldo por cliente, "desde" = fecha en que el saldo dejó de ser 0; total de tinas en `control/config.tinas.total`; aviso
+  `tinasDias` en `alertas`). Merma al recibir la compra (campo en Registrar gasto con Kardex: crea un egreso `merma` con `compraId`).
+  Mayoristas con tope de crédito (`control/config.mayoristas[] {id, cliente, tope}`): alarma roja fija arriba de toda la página (`alarmaHtml`)
+  y avisos tipo `tope` (al 80 % "cerca"). Gastos fijos con cuotas (`recurrentes[].cuotas`; el egreso lleva `cuota` y la descripción "cuota k de N";
+  deja de pedirse al completar). Trabajadores con sueldo (`control/config.trabajadores[] {id, nombre, sueldo, dia, metodo}`) → cada mes salen en
+  Gastos como "Sueldo · NOMBRE" (`origen:"planilla"`, `trabajador`). Categorías nuevas que se agregan solas: "Embutidos y cremas", "Cuotas del local",
+  "Servicios básicos del local" (`CATEGORIAS_NUEVAS`). Escena: DOS camiones (`REPARTO 1` y `REPARTO 2`, `chofer` según Ruta de hoy, `camionDe`),
+  almacén de embutidos y cremas (3D `vivo3dAlmacenCrear`, productos que cumplen `RE_ALMACEN`), y **zonas clicables** estilo centro de convenciones
+  virtual (`ZONAS`, `vivo3dZonasCrear` con Raycaster, brillo al pasar el mouse, borde rojo pulsante si la zona tiene aviso, tarjeta `#vivo-zona-card`
+  con `zonaInfoHtml`, barra de iconos `vivoZonasBarHtml`, podio de vendedores `podioHtml`). Reglas: `tinas` solo admin (demo desplegada;
+  rutipollo-ventas pendiente si no se desplegó). Respaldo diario incluye `tinas`.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,

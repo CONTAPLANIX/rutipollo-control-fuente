@@ -190,6 +190,23 @@
   .vivo-banner{ position:absolute; left:50%; top:22px; transform:translateX(-50%); background:rgba(9,45,88,.92); color:#fff; border:3px solid #f76204; border-radius:14px; padding:8px 22px; font-family:"Anton","Arial Narrow",sans-serif; font-size:clamp(18px, 2.6vw, 30px); letter-spacing:.02em; pointer-events:none; z-index:3; white-space:nowrap; box-shadow:var(--shadow-lg); }
   #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
   .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .vivo-zonas{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .vivo-zonas button{ display:flex; flex-direction:column; align-items:center; gap:3px; min-width:74px; padding:7px 10px; border:1px solid var(--line); border-radius:12px; background:var(--paper-raised); color:var(--ink-soft); font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .vivo-zonas button .ic svg{ width:24px; height:24px; }
+  .vivo-zonas button:hover, .vivo-zonas button.on{ color:var(--accent); border-color:var(--accent); box-shadow:0 0 0 3px rgba(247,98,4,.16); }
+  .vivo-zona-card{ position:absolute; top:12px; right:12px; width:min(340px, calc(100% - 24px)); max-height:calc(100% - 120px); overflow:auto; background:var(--paper-raised); border:1px solid var(--line-strong); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow); z-index:5; font-size:13px; }
+  .zc-head{ display:flex; align-items:center; gap:8px; margin-bottom:6px; } .zc-head .ic svg{ stroke:var(--accent); }
+  .podio{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; align-items:end; margin:6px 0 10px; text-align:center; }
+  .pd .av{ width:44px; height:44px; border-radius:50%; margin:0 auto 4px; display:flex; align-items:center; justify-content:center; font-weight:700; border:3px solid var(--s1); background:var(--paper-alt); }
+  .pd.p1 .av{ width:58px; height:58px; border-color:#f5c242; } .pd.p3 .av{ border-color:var(--s3); }
+  .pd .nm{ font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pd .pt{ font-family:"IBM Plex Mono",monospace; font-size:12px; }
+  .pd .base{ margin-top:4px; border-radius:6px 6px 0 0; background:var(--s1); color:#fff; font-weight:700; height:26px; line-height:26px; } .pd.p1 .base{ height:46px; line-height:46px; background:#f5c242; color:#3a2a00; } .pd.p3 .base{ height:18px; line-height:18px; background:var(--s3); }
+  .pd .corona{ font-size:22px; line-height:1; }
+  body.tv .vivo-zonas{ opacity:.45; } body.tv .vivo-zonas:hover{ opacity:1; }
+  .alarma{ display:flex; align-items:center; gap:10px; border:2px solid var(--danger); animation:alarma 1.2s ease-in-out infinite; }
+  .alarma .ic svg{ width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; flex:none; }
+  @keyframes alarma{ 0%,100%{ box-shadow:0 0 0 0 rgba(227,73,72,0); } 50%{ box-shadow:0 0 0 6px rgba(227,73,72,.28); } }
+  @media (prefers-reduced-motion: reduce){ .alarma{ animation:none; } }
   .vivo-card:fullscreen{ background:var(--paper); padding:16px; display:flex; flex-direction:column; justify-content:center; }
   .rec-wrap{ text-align:center; overflow:auto; background:var(--paper-alt); border-radius:10px; padding:6px; max-height:62vh; }
   #rec-canvas{ touch-action:none; cursor:crosshair; max-width:100%; border-radius:6px; }
@@ -297,7 +314,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "18 oct · C25";
+var APP_VERSION = "24 oct · C26";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -305,7 +322,8 @@ try{
   if(CRC && !CRC.ellipse) CRC.ellipse = function(x,y,rx,ry,rot,a0,a1){ this.save(); this.translate(x,y); this.scale(rx, ry); this.arc(0,0,1,a0,a1); this.restore(); return this; };
 }catch(e){}
 var CFG = { nombre:"Rico Pollo Dissur", titulo:"Rico Pollo", dominio:"rutipollo.app", prefijo:"lrc", app:"Rutipollo" };
-var CATEGORIAS_BASE = ["Compra de pollo","Transporte / combustible","Sueldos","Alquiler","Servicios","Insumos","Otros"];
+var CATEGORIAS_BASE = ["Compra de pollo","Embutidos y cremas","Transporte / combustible","Sueldos","Alquiler","Cuotas del local","Servicios básicos del local","Insumos","Otros"];
+var CATEGORIAS_NUEVAS = ["Embutidos y cremas","Cuotas del local","Servicios básicos del local"]; // se agregan solas a las instalaciones que ya tenian categorias guardadas
 var METODOS = ["efectivo","banco","yape","plin"];
 var MOTIVOS_MERMA = ["Malogrado / descompuesto","Vencido","Devolución de cliente","Robo o pérdida","Peso de menos del proveedor","Otro"];
 var MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -325,7 +343,14 @@ var ICONOS = {
   luna:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   salir:'<path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"/>',
   mapa:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
-  tv:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'
+  tv:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  tinas:'<path d="M3 9h18l-1.5 9h-15zM7 9V7a5 5 0 0 1 10 0v2"/>',
+  alarma:'<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5v.5"/>',
+  vitrina:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 12h18M12 5v14"/>',
+  almacen:'<path d="M3 4h18M3 10h18M3 16h18M5 4v16M19 4v16"/><circle cx="9" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/>',
+  camion:'<path d="M2 7h11v9H2zM13 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  frio:'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
+  trofeo:'<path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3M12 14v4M8 20h8"/>'
 };
 function ico(n){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONOS[n]||"")+'</svg>'; }
 // ---------- utilidades ----------
@@ -368,8 +393,8 @@ function estaPendiente(v){ return v.tipoPago==="credito" && saldoPendiente(v) > 
 
 // ---------- estado ----------
 var hoy = todayISO(), hp = parseFecha(hoy);
-var CONFIG_BASE = { alertas:{ deudaCliente:500, stockMin:100, cajaDif:20 }, metas:{ venta:0, utilidad:0 }, recurrentes:[] };
-var S = { db:null, user:null, usuarios:[], ventas:{}, egresos:{}, productos:[], categorias:CATEGORIAS_BASE.slice(), config:JSON.parse(JSON.stringify(CONFIG_BASE)), cierres:{}, nombres:[], aniosCargados:{}, unsubs:[], servicio:{}, listo:false, online:navigator.onLine };
+var CONFIG_BASE = { alertas:{ deudaCliente:500, stockMin:100, cajaDif:20, tinasDias:7 }, metas:{ venta:0, utilidad:0 }, recurrentes:[], mayoristas:[], trabajadores:[], tinas:{ total:0 } };
+var S = { db:null, user:null, usuarios:[], ventas:{}, egresos:{}, productos:[], categorias:CATEGORIAS_BASE.slice(), config:JSON.parse(JSON.stringify(CONFIG_BASE)), cierres:{}, tinas:{}, nombres:[], aniosCargados:{}, unsubs:[], servicio:{}, listo:false, online:navigator.onLine };
 var UI = { vista:"tablero", per:{ tipo:"mes", anio:hp.anio, mes:hp.mes, dia:hoy, desde:hoy.slice(0,8)+"01", hasta:hoy },
   utilBase: lsGet("utilBase","cobrado"), gastosCat:"", gastosBuscar:"", verEliminados:false, kardexProd:"", cajaDia:hoy, cajaReal:"", cajaNota:"",
   gateNombre:"", gateError:"", gateEscribir:false, gateCargando:false, gateMode:"login" };
@@ -581,16 +606,16 @@ function render(){
   if(UI.vista==="envivo" && window.__vistaAnt==="envivo" && document.getElementById("vivo-canvas")){ vivoRefrescar(); return; }
   var root = document.getElementById("app");
   var nAv = calcAlertas().length;
-  var navs = [["tablero",ico("tablero"),"Tablero"],["envivo",ico("envivo"),"Rico Pollo"],["gastos",ico("gastos"),"Gastos"],["kardex",ico("kardex"),"Kardex"],["caja",ico("caja"),"Caja"],["avisos",ico("avisos"),"Avisos", nAv],["ajustes",ico("ajustes"),"Ajustes"]];
+  var navs = [["tablero",ico("tablero"),"Tablero"],["envivo",ico("envivo"),"Rico Pollo"],["gastos",ico("gastos"),"Gastos"],["kardex",ico("kardex"),"Kardex"],["tinas",ico("tinas"),"Tinas"],["caja",ico("caja"),"Caja"],["avisos",ico("avisos"),"Avisos", nAv],["ajustes",ico("ajustes"),"Ajustes"]];
   function navHtml(cls){ return navs.map(function(n){ return '<button class="'+cls+(UI.vista===n[0]?' active':'')+'" data-action="vista" data-val="'+n[0]+'"><span class="ic">'+n[1]+'</span><span>'+n[2]+'</span>'+(n[3] ? '<span class="badge">'+n[3]+'</span>' : '')+'</button>'; }).join(""); }
-  var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="kardex" ? renderKardex() : UI.vista==="caja" ? renderCaja() : UI.vista==="avisos" ? renderAvisos() : renderAjustes();
+  var cont = UI.vista==="tablero" ? renderTablero() : UI.vista==="envivo" ? renderEnVivo() : UI.vista==="gastos" ? renderGastos() : UI.vista==="kardex" ? renderKardex() : UI.vista==="tinas" ? renderTinas() : UI.vista==="caja" ? renderCaja() : UI.vista==="avisos" ? renderAvisos() : renderAjustes();
   root.innerHTML = ''
     + '<div class="topbar"><div class="brand"><img class="brand-logo" src="assets/logo.png" alt=""><div class="brand-text"><strong>'+CFG.titulo+'</strong></div></div>'
     + '<div class="topbar-right"><span class="user-badge"><span class="sync-dot '+(S.online?'ok':'warn')+'" title="'+(S.online?'Conectado':'Sin internet')+'"></span><span class="nom">Hola, <b>'+escapeHtml(S.user.nombre)+'</b></span></span>'
     + '<button class="icon-btn" data-action="tema" title="'+(temaActual()==="dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro")+'">'+ico(temaActual()==="dark" ? "sol" : "luna")+'</button>'
     + '<button class="btn btn-sm btn-ghost" data-action="cerrar-sesion" title="Cerrar sesión" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("salir")+'</span>Salir</button></div></div>'
     + '<div class="layout"><nav class="sidenav">'+navHtml("nav-btn")+'<div class="foot">'+CFG.app+' Control<br>versión '+APP_VERSION+'<br>Datos de la app '+CFG.app+'</div></nav>'
-    + '<main class="main">'+(servicioAvisoHtml())+cont+'</main></div>'
+    + '<main class="main">'+(servicioAvisoHtml())+alarmaHtml()+cont+'</main></div>'
     + '<nav class="tabbar">'+navHtml("tab-btn")+'</nav>';
   if(window.__vistaAnt !== UI.vista) window.scrollTo(0, 0); window.__vistaAnt = UI.vista;
   var claveAnim = UI.vista+"|"+JSON.stringify(UI.per)+"|"+UI.utilBase;
@@ -663,6 +688,8 @@ function montarMapa(){
 }
 function calcAlertas(){
   var A = S.config.alertas, out = [], hoyF = todayISO();
+  mayoristasEstado().forEach(function(x){ if(x.pasado) out.push({ ic:ico("alarma"), tipo:"tope", txt:"ALARMA: "+escapeHtml(x.m.cliente)+" pasó su tope de crédito", sub:"debe "+fmt(x.deuda)+" · tope "+fmt(x.m.tope)+" · cobrar antes de venderle más a crédito" }); else if(x.cerca) out.push({ ic:ico("alarma"), tipo:"tope", txt:escapeHtml(x.m.cliente)+" está cerca de su tope de crédito", sub:"debe "+fmt(x.deuda)+" de "+fmt(x.m.tope)+" ("+pctTxt(x.pct)+")" }); });
+  if(A.tinasDias > 0) calcTinas({ desde:hoyF, hasta:hoyF }).porCliente.forEach(function(g){ if(g.saldo > 0 && g.desde && diasEntre(g.desde, hoyF) >= A.tinasDias) out.push({ ic:ico("tinas"), tipo:"tinas", txt:escapeHtml(g.cliente)+" tiene "+g.saldo+" tina"+(g.saldo===1?"":"s")+" desde hace "+diasEntre(g.desde, hoyF)+" días", sub:"salieron el "+fechaDisplay(g.desde)+" · pedir que las devuelva", vista:"tinas" }); });
   Object.keys(S.cierres).sort().reverse().slice(0, 10).forEach(function(f){ var c = S.cierres[f]; var d = num(c.real) - num(c.esperado); if(Math.abs(d) >= A.cajaDif && A.cajaDif > 0) out.push({ ic:ico("caja"), tipo:"caja", txt:"Caja del "+fechaDisplay(f)+": "+(d < 0 ? "faltaron" : "sobraron")+" "+fmt(Math.abs(d)), sub:"esperado "+fmt(c.esperado)+" · contado "+fmt(c.real), vista:"caja", val:f }); });
   var deudas = {}; Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !estaPendiente(v)) return; var k = v.cliente || "(sin nombre)"; var g = deudas[k] || (deudas[k] = { monto:0, n:0, desde:v.fecha }); g.monto += saldoPendiente(v); g.n++; if(v.fecha < g.desde) g.desde = v.fecha; });
   Object.keys(deudas).sort(function(a,b){ return deudas[b].monto-deudas[a].monto; }).forEach(function(k){ var g = deudas[k]; if(A.deudaCliente > 0 && g.monto >= A.deudaCliente) out.push({ ic:ico("gastos"), tipo:"deuda", txt:escapeHtml(k)+" debe "+fmt(g.monto), sub:g.n+" nota"+(g.n===1?"":"s")+" pendiente"+(g.n===1?"":"s")+" · la más antigua del "+fechaDisplay(g.desde) }); });
@@ -675,11 +702,11 @@ function avisosHtml(){
 }
 function renderAvisos(){
   var al = calcAlertas(), A = S.config.alertas;
-  var grupos = [["caja",'<span class="ic">'+ico("caja")+'</span>',"Caja que no cuadra","Cierres guardados en Caja donde el efectivo contado no coincide con el esperado."],["deuda",'<span class="ic">'+ico("gastos")+'</span>',"Clientes con deuda alta","Suma de todas las notas pendientes de cada cliente."],["stock",'<span class="ic">'+ico("kardex")+'</span>',"Productos con poco stock","Según el Kardex (solo productos con compras o inventario registrado)."]];
+  var grupos = [["tope",'<span class="ic">'+ico("alarma")+'</span>',"Mayoristas al tope de crédito","Clientes mayoristas (lista en Ajustes) cuya deuda llegó al tope que usted les puso. Suena la alarma arriba de la página."],["tinas",'<span class="ic">'+ico("tinas")+'</span>',"Tinas sin devolver","Clientes que tienen tinas (bandejas) desde hace más días que el límite."],["caja",'<span class="ic">'+ico("caja")+'</span>',"Caja que no cuadra","Cierres guardados en Caja donde el efectivo contado no coincide con el esperado."],["deuda",'<span class="ic">'+ico("gastos")+'</span>',"Clientes con deuda alta","Suma de todas las notas pendientes de cada cliente."],["stock",'<span class="ic">'+ico("kardex")+'</span>',"Productos con poco stock","Según el Kardex (solo productos con compras o inventario registrado)."]];
   var html = '<h1 class="section-title">Avisos</h1><p class="section-sub">'+(al.length ? al.length+' aviso'+(al.length===1?'':'s')+' pendiente'+(al.length===1?'':'s')+'. Se calculan solos con los datos de la app y de esta página.' : 'Todo en orden: no hay nada que avisar.')+'</p>'
     + '<div class="cols-2"><div>'
     + grupos.map(function(g){ var lista = al.filter(function(a){ return a.tipo===g[0]; }); return '<div class="card"><h2>'+g[1]+' '+g[2]+' <span class="kard-sub">'+lista.length+'</span></h2><p class="kard-sub" style="margin:-4px 0 8px;">'+g[3]+'</p>'+(lista.length ? lista.map(function(a){ return '<div class="aviso"'+(a.vista ? ' data-action="vista" data-val="'+a.vista+'" style="cursor:pointer;"' : '')+'><span class="ic" style="display:inline-flex;">'+a.ic+'</span><div><div>'+a.txt+'</div><div class="sub">'+a.sub+'</div></div></div>'; }).join("") : '<p class="empty" style="padding:6px 0;">Ninguno.</p>')+'</div>'; }).join("")
-    + '</div><div><div class="card"><h2>Límites de los avisos</h2><p class="kard-sub" style="margin-bottom:8px;">Ponga 0 para apagar un aviso.</p><div class="field"><label for="al-caja">Avisar si la caja no cuadra por más de (S/)</label><input type="number" id="al-caja" min="0" step="1" value="'+A.cajaDif+'"></div><div class="field"><label for="al-deuda">Avisar si un cliente debe más de (S/)</label><input type="number" id="al-deuda" min="0" step="1" value="'+A.deudaCliente+'"></div><div class="field"><label for="al-stock">Avisar si un producto baja de (kg)</label><input type="number" id="al-stock" min="0" step="1" value="'+A.stockMin+'"></div><div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary btn-sm" data-action="guardar-alertas">Guardar límites</button></div></div></div></div>';
+    + '</div><div><div class="card"><h2>Límites de los avisos</h2><p class="kard-sub" style="margin-bottom:8px;">Ponga 0 para apagar un aviso.</p><div class="field"><label for="al-caja">Avisar si la caja no cuadra por más de (S/)</label><input type="number" id="al-caja" min="0" step="1" value="'+A.cajaDif+'"></div><div class="field"><label for="al-deuda">Avisar si un cliente debe más de (S/)</label><input type="number" id="al-deuda" min="0" step="1" value="'+A.deudaCliente+'"></div><div class="field"><label for="al-stock">Avisar si un producto baja de (kg)</label><input type="number" id="al-stock" min="0" step="1" value="'+A.stockMin+'"></div><div class="field"><label for="al-tinas">Avisar si un cliente tiene tinas más de (días)</label><input type="number" id="al-tinas" min="0" step="1" value="'+(A.tinasDias||0)+'"></div><div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary btn-sm" data-action="guardar-alertas">Guardar límites</button></div></div></div></div>';
   return html;
 }
 function metasHtml(r, R){
@@ -883,7 +910,7 @@ function guardarRutaHoy(){
   var nombres = [].slice.call(document.querySelectorAll(".ruta-chk:checked")).map(function(c){ return c.value; });
   S.config.rutaHoy = { fecha:todayISO(), nombres:nombres }; closeOverlay();
   S.db.doc("control/config").set({ rutaHoy:S.config.rutaHoy, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Ruta de hoy: "+(nombres.join(", ")||"nadie")); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
-  VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; vivoRefrescar();
+  VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; var rb = document.querySelector('[data-action="ruta-hoy"]'); if(rb) rb.textContent = "Ruta de hoy: "+(nombres.join(", ")||"nadie"); vivoRefrescar();
 }
 function dibujarEfectos(ctx, dt){
   VIVO.efectos = VIVO.efectos.filter(function(e){ e.t += dt; return e.t < e.vida; });
@@ -1002,6 +1029,8 @@ function vivoDibujar(dt){
   items.push({ d:6.3+4+1.01, draw:function(){ caja3d(ctx, 6.3, 4, 0.8, 0.8, 24, PAL.mostr, PAL.mostrL, PAL.mostrR); caja3d(ctx, 6.4, 4.1, 0.6, 0.6, 12, "#3b4a5c", "#2c3847", "#1f2834", 24); var cp = isoP(6.7, 4.4, 40); ctx.fillStyle = "#7CFC98"; ctx.fillRect(cp.x-8, cp.y-6, 16, 7); if(VIVO.cajaBrillo > 0){ ctx.fillStyle = "rgba(245,194,66,"+Math.min(1,VIVO.cajaBrillo)+")"; ctx.beginPath(); ctx.arc(cp.x, cp.y-10, 14, 0, Math.PI*2); ctx.fill(); } } });
   // vitrina de productos (pared izquierda)
   items.push({ d:1.2+7.7, draw:function(){ dibujarVitrina(ctx); } });
+  // almacen de embutidos y cremas (estante a la derecha de las jabas)
+  items.push({ d:9.6+1.2+1, draw:function(){ caja3d(ctx, 9.6, 1.2, 2.1, 1.3, 46, "#c9d1d9", "#aab4bf", "#8d98a4"); var e0 = isoP(10.65, 1.85, 46); for(var q=0;q<5;q++){ ctx.fillStyle = q%2 ? "#b5453b" : "#c9604a"; ctx.beginPath(); ctx.roundRect(e0.x-34+q*15, e0.y-34, 8, 20, 4); ctx.fill(); } for(var w=0;w<4;w++){ ctx.fillStyle = "#faf6ec"; ctx.fillRect(e0.x-30+w*16, e0.y-8, 10, 11); ctx.fillStyle = ["#d33b2f","#f2b705","#2e9e4f","#f27f0c"][w]; ctx.fillRect(e0.x-30+w*16, e0.y-10, 10, 3); } textoIso(ctx, 10.65, 1.85, 64, "ALMACÉN", "#1f4f7a", 11, true); textoIso(ctx, 10.65, 1.85, 52, "embutidos y cremas", "#1f4f7a", 9); } });
   // puerta de entrada (marco en el frente)
   items.push({ d:4+8+1, draw:function(){ caja3d(ctx, 0, 7.8, 3.9, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); caja3d(ctx, 5.6, 7.8, ISO.cols-5.6, 0.25, 30, PAL.pared, PAL.paredL, PAL.paredR); var e = isoP(4.75, 8.1, 34); ctx.fillStyle = "#1d7a3e"; ctx.beginPath(); ctx.roundRect(e.x-30, e.y-10, 60, 16, 4); ctx.fill(); ctx.font = "700 10px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.fillText(VIVO.abierto ? "ABIERTO" : "CERRADO", e.x, e.y+2); } });
   // personas, motos, camiones
@@ -1087,6 +1116,7 @@ function vivo3dInit(){
   // vitrina de productos
   caja(1.0, 0.8, 4.3, 0xaeb6bf, 0.7, 0.4, 5.6, { metal:0.5, rough:0.35 }); var vidrio = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.55, 4.26), new THREE.MeshPhysicalMaterial({ color:0xffffff, roughness:0.04, metalness:0, transmission:1, thickness:0.3, ior:1.5, envMapIntensity:1.0 })); vidrio.userData.envFijo = true; vidrio.position.set(0.7, 1.08, 5.6); sc.add(vidrio);
   var tv = spriteTexto("VITRINA", { size:36, bold:true, color:"#1f4f7a", fondo:"rgba(255,255,255,.85)" }); tv.position.set(0.7, 1.6, 3.3); sc.add(tv);
+  vivo3dAlmacenCrear(sc); vivo3dZonasCrear(sc, gl);
   // cielo, sol, luna, nubes y estrellas
   T3.cieloCanvas = document.createElement("canvas"); T3.cieloCanvas.width = 4; T3.cieloCanvas.height = 256; T3.cielo = new THREE.CanvasTexture(T3.cieloCanvas); T3.cielo.colorSpace = THREE.SRGBColorSpace; sc.background = T3.cielo;
   function discoTex(colorIn, colorOut){ var c = document.createElement("canvas"); c.width = c.height = 128; var ctx = c.getContext("2d"); var g = ctx.createRadialGradient(64,64,10,64,64,64); g.addColorStop(0, colorIn); g.addColorStop(0.35, colorIn); g.addColorStop(1, colorOut); ctx.fillStyle = g; ctx.fillRect(0,0,128,128); var t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
@@ -1172,8 +1202,85 @@ function vivo3dCamionProveedor(c){
   var tx = texturaTexto("POLLO", { size:56, bold:true, font:"'Anton', 'Arial Narrow', sans-serif", color:"#f76204" }); var pl = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6*tx.userData.h/tx.userData.w), new THREE.MeshStandardMaterial({ map:tx, transparent:true })); pl.position.set(-0.4, 1.1, 0.51); g.add(pl);
   g.traverse(function(o){ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } }); T3.scene.add(g); c.m3 = g; return g;
 }
+// ---------- Almacen de embutidos y cremas (estante con embutidos colgados, frascos y botellas) ----------
+var RE_ALMACEN = /EMBUTID|CHORIZO|HOT ?DOG|SALCHICH|JAMON|MORTADEL|HAMBURG|CREMA|MAYONES|KETCHUP|MOSTAZA|\bAJI\b|ROCOTO|SALSA|VINAGRE|ACEITUNA|QUESO|TOCINO/;
+function stockAlmacen(){ var f = todayISO(); return calcKardex({ desde:f, hasta:f }).filter(function(p){ return RE_ALMACEN.test(normalizar(p.nombre)); }); }
+function vivo3dAlmacenCrear(sc){
+  var X = 10.6, Z = 1.9, metal = m3(0xb8c0c8, { metal:0.6, rough:0.35 });
+  [0.05, 0.6, 1.15].forEach(function(y){ caja(2.2, 0.05, 1.3, 0xb8c0c8, X, y, Z, { mat:metal }); });
+  [[-1.05,-0.6],[1.05,-0.6],[-1.05,0.6],[1.05,0.6]].forEach(function(q){ caja(0.06, 1.7, 0.06, 0x8d98a4, X+q[0], 0.85, Z+q[1], { metal:0.6, rough:0.4 }); });
+  caja(2.2, 0.05, 0.05, 0x8d98a4, X, 1.7, Z-0.35, { metal:0.6, rough:0.4 }); // barra para colgar los embutidos
+  for(var i=0;i<7;i++){ var e = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.26, 4, 10), m3(i%2 ? 0xb5453b : 0xc9604a, { rough:0.45, barniz:0.4 })); e.position.set(X-0.9+i*0.3, 1.46, Z-0.35); e.castShadow = true; sc.add(e); var hilo = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 6), m3(0xf0e6d2)); hilo.position.set(X-0.9+i*0.3, 1.66, Z-0.35); sc.add(hilo); }
+  var tapas = [0xd33b2f, 0xf2b705, 0x2e9e4f, 0xf27f0c, 0xd33b2f, 0x2e9e4f];
+  for(var j=0;j<6;j++){ var fr = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.22, 14), m3(0xfaf6ec, { rough:0.3, barniz:0.6 })); fr.position.set(X-0.85+j*0.34, 0.74, Z+0.3); fr.castShadow = true; sc.add(fr); var tp = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.05, 14), m3(tapas[j], { rough:0.4 })); tp.position.set(X-0.85+j*0.34, 0.875, Z+0.3); sc.add(tp); }
+  for(var k=0;k<5;k++){ var bt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.3, 12), m3(k%2 ? 0xf2d23a : 0xe9472f, { rough:0.35, barniz:0.5 })); bt.position.set(X-0.8+k*0.4, 0.22, Z+0.3); bt.castShadow = true; sc.add(bt); }
+  var ta = spriteTexto("ALMACÉN · embutidos y cremas", { size:34, bold:true, color:"#1f4f7a", fondo:"rgba(255,255,255,.85)" }); ta.position.set(X, 2.25, Z); sc.add(ta);
+}
+function vivo3dAlmacen(){
+  var al = stockAlmacen(); var key = al.map(function(p){ return p.nombre+":"+p.final; }).join("|"); if(key === T3.almacenKey) return; T3.almacenKey = key;
+  if(T3.almacenTexto) T3.scene.remove(T3.almacenTexto); var tot = al.reduce(function(s,p){ return s+p.final; }, 0);
+  T3.almacenTexto = spriteTexto(al.length ? al.length+" producto"+(al.length===1?"":"s")+" · "+kgTxt(tot)+" en almacén" : "sin stock registrado", { size:28, color:al.length ? "#1d7a3e" : "#8c5a2b", fondo:"rgba(255,255,255,.88)", escala:0.0046 }); T3.almacenTexto.position.set(10.6, 1.95, 1.9); T3.scene.add(T3.almacenTexto);
+}
+// ---------- Zonas clicables (como los espacios de un centro de convenciones virtual): brillan al pasar el mouse y abren una tarjeta ----------
+var ZONAS = [
+  { id:"caja", nombre:"Caja", ico:"caja", box:[4.9,0.7,4.4, 4.8,1.5,1.3], foco:[4.9,0.5,4.4], dist:8.5 },
+  { id:"camara", nombre:"Cámara", ico:"frio", box:[2.0,1.1,1.5, 3.7,2.3,2.7], foco:[2.4,0.8,1.8], dist:9.5 },
+  { id:"vitrina", nombre:"Vitrina", ico:"vitrina", box:[0.7,0.7,5.6, 1.1,1.5,4.4], foco:[1.0,0.6,5.6], dist:8.5 },
+  { id:"almacen", nombre:"Almacén", ico:"almacen", box:[10.6,0.95,1.9, 2.4,1.9,1.5], foco:[10.6,0.8,1.9], dist:7.5 },
+  { id:"camion", nombre:"Camiones", ico:"camion", box:[7.8,0.75,9.45, 8.2,1.6,1.5], foco:[7.8,0.5,9.4], dist:12.5 },
+  { id:"marcador", nombre:"Ranking", ico:"trofeo", box:[9.6,1.95,0.12, 3.5,1.5,0.3], foco:[9.6,1.6,0.6], dist:7 }
+];
+function vivo3dZonasCrear(sc, gl){
+  T3.zonas = ZONAS.map(function(z){ var b = z.box; var mesh = new THREE.Mesh(new THREE.BoxGeometry(b[3], b[4], b[5]), new THREE.MeshBasicMaterial({ color:0xf76204, transparent:true, opacity:0, depthWrite:false })); mesh.position.set(b[0], b[1], b[2]); mesh.userData.zona = z.id; mesh.renderOrder = 15; sc.add(mesh);
+    var borde = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color:0xf76204, transparent:true, opacity:0 })); borde.position.copy(mesh.position); borde.renderOrder = 16; sc.add(borde);
+    return { z:z, mesh:mesh, borde:borde }; });
+  if(!gl.dataset.zonas){ gl.dataset.zonas = "1"; var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    var bajo = function(e){ if(!T3.listo || !T3.zonas.length) return null; var r = gl.getBoundingClientRect(); v2.x = ((e.clientX-r.left)/r.width)*2-1; v2.y = -((e.clientY-r.top)/r.height)*2+1; ray.setFromCamera(v2, T3.cam); var hit = ray.intersectObjects(T3.zonas.map(function(q){ return q.mesh; }), false)[0]; return hit ? hit.object.userData.zona : null; };
+    gl.addEventListener("pointermove", function(e){ var id = bajo(e); if(id !== T3.hover){ T3.hover = id; gl.style.cursor = id ? "pointer" : ""; } });
+    gl.addEventListener("pointerleave", function(){ T3.hover = null; gl.style.cursor = ""; });
+    gl.addEventListener("click", function(e){ var id = bajo(e); if(id) vivoZona(id); });
+  }
+}
+function vivo3dZonasAnimar(ahora){
+  var pulso = 0.5 + 0.5*Math.sin(ahora*4);
+  (T3.zonas||[]).forEach(function(q){ var id = q.z.id, hov = T3.hover===id, act = VIVO.zonaActiva===id, al = !!(VIVO.zonaAlerta||{})[id];
+    q.borde.material.opacity = hov || act ? 0.95 : al ? 0.3 + pulso*0.6 : 0; q.borde.material.color.setHex(al && !hov && !act ? 0xe34948 : 0xf76204);
+    q.mesh.material.opacity = hov ? 0.14 : act ? 0.07 : al ? 0.03 + pulso*0.07 : 0; });
+}
+function vivoZona(id){
+  var z = ZONAS.find(function(x){ return x.id===id; }); if(!z) return;
+  VIVO.zonaActiva = id; if(T3.listo) T3.foco = { x:z.foco[0], y:z.foco[1], z:z.foco[2], dist:z.dist, hasta:performance.now()/1000 + 9 };
+  vivoZonaPintar();
+}
+function vivoZonaCerrar(){ VIVO.zonaActiva = null; T3.foco = null; vivoZonaPintar(); }
+function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
+function vivoZonasBarHtml(){ return '<div class="vivo-zonas">'+ZONAS.map(function(z){ return '<button data-action="vivo-zona" data-val="'+z.id+'" class="'+(VIVO.zonaActiva===z.id?'on':'')+'" title="Ver '+z.nombre+'"><span class="ic">'+ico(z.ico)+'</span><span>'+z.nombre+'</span></button>'; }).join("")+'</div>'; }
+function vivoZonasAlertas(){
+  var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion = true; });
+  if(stockAlmacen().some(function(p){ return S.config.alertas.stockMin > 0 && p.final < S.config.alertas.stockMin; })) z.almacen = true; VIVO.zonaAlerta = z;
+}
+function zonaInfoHtml(id){
+  var z = ZONAS.find(function(x){ return x.id===id; }); var E = vivoEstadoHoy(), ing = E.ing, eg = E.eg, f = E.f, body = "";
+  function li(k, v, s){ return '<li><span class="lk">'+k+'</span><span class="lv">'+v+'</span>'+(s ? '<span class="ls">'+s+'</span>' : '')+'</li>'; }
+  if(id==="caja"){ body = '<ul class="ledger">'+li("Cobrado hoy", fmt(ing.cobrado.total), "efectivo "+n2(ing.cobrado.efectivo)+" · banco "+n2(ing.cobrado.banco)+" · Yape "+n2(ing.cobrado.yape)+" · Plin "+n2(ing.cobrado.plin))+li("Efectivo que debe haber", fmt(ing.cobrado.efectivo - eg.porMetodo.efectivo), "cobrado en efectivo menos gastos en efectivo")+li("Notas de hoy", String(ing.notas), "por cobrar "+fmt(ing.porCobrar))+li("En caja", escapeHtml((VIVO.cajeros||[]).map(function(c){ return c.nombre; }).join(", ")||"—"))+'</ul><div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="vista" data-val="caja">Cuadrar la caja</button></div>'; }
+  else if(id==="camara"){ var kx = calcKardex({ desde:f, hasta:f }).filter(function(p){ return !RE_ALMACEN.test(normalizar(p.nombre)); }).sort(function(a,b){ return b.final-a.final; }); var mer = kx.reduce(function(s,p){ return s+p.mermas; }, 0); var minS = S.config.alertas.stockMin;
+    body = kx.length ? '<ul class="ledger">'+kx.slice(0,6).map(function(p){ return li(escapeHtml(p.nombre.toLowerCase()), kgTxt(p.final)+" "+escapeHtml(p.unidad), (minS > 0 && p.final < minS) ? "⚠ poco stock" : ""); }).join("")+(mer ? li("Mermas de hoy", "−"+kgTxt(mer)+" kg") : "")+'</ul><div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="vista" data-val="kardex">Ver Kardex</button></div>' : '<p class="kard-sub">Sin stock registrado. Registre las compras con producto y kilos en Gastos y aquí verá cuánto queda.</p>'; }
+  else if(id==="vitrina"){ var pl = VIVO.productosHoy||[]; body = pl.length ? '<ul class="ledger">'+pl.map(function(p){ return li(escapeHtml(p.corto.toLowerCase()), p.kg > 0 ? kgTxt(p.kg)+(p.unidad==="kg" ? " kg hoy" : " hoy") : "sin ventas hoy"); }).join("")+'</ul>' : '<p class="kard-sub">Todavía no hay productos vendidos hoy. Apenas salga una nota, aparecen aquí con sus kilos.</p>'; }
+  else if(id==="almacen"){ var al = stockAlmacen(); body = al.length ? '<ul class="ledger">'+al.map(function(p){ return li(escapeHtml(p.nombre.toLowerCase()), kgTxt(p.final)+" "+escapeHtml(p.unidad), "vendido hoy "+kgTxt(p.salidas)); }).join("")+'</ul>' : '<p class="kard-sub">Aquí van los embutidos y cremas. Registre su compra en Gastos marcando "entra al Kardex" (por ejemplo HOT DOG, CHORIZO, MAYONESA) y aparecerán con su stock.</p>'; }
+  else if(id==="camion"){ var tn = calcTinas({ desde:f, hasta:f }); var enRuta = ing.lista.filter(esVentaEnRuta); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
+    body = '<ul class="ledger">'+VIVO.motos.map(function(m){ return li(escapeHtml(m.nombre), m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy"); }).join("")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s"))+li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna")+'</ul><div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button><button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
+  else if(id==="marcador"){ body = podioHtml(VIVO.marcador||[]); }
+  return '<div class="zc-head"><span class="ic">'+ico(z.ico)+'</span><strong>'+z.nombre+'</strong><span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="vivo-zona-cerrar" title="Cerrar">✕</button></div>'+body;
+}
+function podioHtml(lista){
+  if(!lista.length) return '<p class="kard-sub">Sin ventas todavía hoy. El primero en vender sube al podio.</p>';
+  var top = lista.slice(0,3), orden = [top[1], top[0], top[2]];
+  return '<div class="podio">'+orden.map(function(v, i){ if(!v) return '<div class="pd vacio"></div>'; var pos = i===1 ? 1 : i===0 ? 2 : 3; return '<div class="pd p'+pos+'">'+(pos===1 ? '<div class="corona">👑</div>' : '')+'<div class="av">'+escapeHtml(String(v.nombre).slice(0,2).toUpperCase())+'</div><div class="nm">'+escapeHtml(v.nombre)+'</div><div class="pt">'+fmt(v.vendido)+'</div><div class="base">'+pos+'°</div></div>'; }).join("")+'</div>'
+    + (lista.length > 3 ? '<ul class="ledger">'+lista.slice(3).map(function(v, i){ return '<li><span class="lk">'+(i+4)+'° '+escapeHtml(v.nombre)+'</span><span class="lv">'+fmt(v.vendido)+'</span></li>'; }).join("")+'</ul>' : '');
+}
 function vivo3dRender(dt){
   if(!T3.listo) return; var sc = T3.scene, ahora = performance.now()/1000;
+  vivo3dZonasAnimar(ahora); if(ahora - (T3.almacenT||0) > 3){ T3.almacenT = ahora; vivo3dAlmacen(); }
   if(Math.floor(horaDecimal()*60) !== T3.hora){ T3.hora = Math.floor(horaDecimal()*60); vivo3dCielo(dt); }
   NUBES.forEach(function(n, i){ T3.nubes[i].position.x = -14 + n.x*34; });
   T3.ventilador.rotation.z += dt*7; vivo3dCrates(); vivo3dProductos();
@@ -1188,7 +1295,7 @@ function vivo3dRender(dt){
   T3.personasM = T3.personasM.filter(function(g){ if(vivas[g.uuid]) return true; sc.remove(g); return false; }); VIVO.personas.forEach(function(p){ if(T3.personasM.indexOf(p.m3) < 0) T3.personasM.push(p.m3); });
   vivo3dMascotas(dt);
   // camiones de vendedores
-  VIVO.motos.forEach(function(m){ var g = vivo3dCamionVendedor(m); g.position.set(m.x, 0, m.y); g.userData.luz.intensity = (m.fuera || esNoche()) ? 35 : 0; var moviendo = m.fuera && m.x < 19 && m.x !== m.px; g.children.forEach(function(ch){ if(ch.geometry && ch.geometry.type==="CylinderGeometry" && ch.rotation.x) ch.rotation.y += moviendo ? dt*8 : 0; }); g.userData.etiqueta.material.opacity = m.fuera ? 1 : 0.85; if(m.fuera !== g.userData.fueraAnt){ g.userData.fueraAnt = m.fuera; g.remove(g.userData.etiqueta); g.userData.etiqueta = spriteTexto(m.fuera ? (m.quien ? m.quien+" · en ruta" : "En ruta") : "Reparto", { size:30, color:m.fuera ? "#1c0f03" : "#ffffff", fondo:m.fuera ? "rgba(247,98,4,.95)" : "rgba(9,45,88,.88)" }); g.userData.etiqueta.position.set(0, 1.55, 0); g.add(g.userData.etiqueta); } });
+  VIVO.motos.forEach(function(m){ var g = vivo3dCamionVendedor(m); g.position.set(m.x, 0, m.y); g.userData.luz.intensity = (m.fuera || esNoche()) ? 35 : 0; var moviendo = m.fuera && m.x < 19 && m.x !== m.px; g.children.forEach(function(ch){ if(ch.geometry && ch.geometry.type==="CylinderGeometry" && ch.rotation.x) ch.rotation.y += moviendo ? dt*8 : 0; }); g.userData.etiqueta.material.opacity = m.fuera ? 1 : 0.85; var etq = m.fuera ? (m.quien ? m.quien+" · en ruta" : "En ruta") : (m.chofer ? m.chofer+" · "+m.nombre.toLowerCase() : m.nombre.toLowerCase()); if(etq !== g.userData.etqAnt){ g.userData.etqAnt = etq; g.remove(g.userData.etiqueta); g.userData.etiqueta = spriteTexto(etq, { size:30, color:m.fuera ? "#1c0f03" : "#ffffff", fondo:m.fuera ? "rgba(247,98,4,.95)" : "rgba(9,45,88,.88)" }); g.userData.etiqueta.position.set(0, 1.55, 0); g.add(g.userData.etiqueta); } });
   // camion proveedor
   var vc = {}; VIVO.camiones.forEach(function(c){ var g = vivo3dCamionProveedor(c); vc[g.uuid] = 1; g.position.set(c.x, 0, c.y); var tt = c.texto || ""; if(tt !== g.userData.txt){ g.userData.txt = tt; if(g.userData.sp){ g.remove(g.userData.sp); g.userData.sp = null; } if(tt){ var sp2 = spriteTexto(tt, { size:30, color:"#ffffff", fondo:"rgba(29,122,62,.92)" }); sp2.position.set(-0.4, 2.1, 0); g.add(sp2); g.userData.sp = sp2; } } });
   T3.camionesM = T3.camionesM.filter(function(g){ if(vc[g.uuid]) return true; sc.remove(g); return false; }); VIVO.camiones.forEach(function(c){ if(T3.camionesM.indexOf(c.m3) < 0) T3.camionesM.push(c.m3); });
@@ -1204,14 +1311,15 @@ function vivo3dRender(dt){
   var bn = document.getElementById("vivo-banner"); if(FIESTA.banner){ var b = FIESTA.banner; b.t += dt; if(b.t > b.vida) FIESTA.banner = null; else { if(!bn){ bn = document.createElement("div"); bn.id = "vivo-banner"; bn.className = "vivo-banner"; T3.canvas.parentElement.appendChild(bn); } bn.textContent = b.texto; bn.style.opacity = b.t > b.vida-0.6 ? (b.vida-b.t)/0.6 : 1; bn.style.transform = "translateX(-50%) scale("+(b.t < 0.35 ? 0.6 + b.t/0.35*0.4 : 1)+")"; } } if(!FIESTA.banner && bn) bn.remove();
   // camara: sigue al cliente que compra
   var cli = VIVO.personas.filter(function(p){ return p !== VIVO.trabajador && p.viva && !p.rutero && (VIVO.cajeros||[]).indexOf(p) < 0; });
-  if(cli.length){ var c = cli[cli.length-1]; var enCalle = c.y > 8; T3.tTarget.set(c.x*0.5 + (enCalle ? (VIVO.motos[0] ? VIVO.motos[0].px : c.x) : 4.9)*0.5, 0.6, c.y*0.5 + (enCalle ? 9.2 : 4.4)*0.5); T3.tDist = 12.5; } else { T3.tTarget.set(6, 0.2, 5.6); T3.tDist = 21; }
+  if(cli.length){ var c = cli[cli.length-1]; var enCalle = c.y > 8; T3.tTarget.set(c.x*0.5 + (enCalle ? camionCercano(c.x) : 4.9)*0.5, 0.6, c.y*0.5 + (enCalle ? 9.2 : 4.4)*0.5); T3.tDist = 12.5; } else { T3.tTarget.set(6, 0.2, 5.6); T3.tDist = 21; }
+  if(T3.foco){ if(ahora < T3.foco.hasta){ T3.tTarget.set(T3.foco.x, T3.foco.y, T3.foco.z); T3.tDist = T3.foco.dist; } else T3.foco = null; }
   var kk = Math.min(1, dt*2.2); T3.target.lerp(T3.tTarget, kk); T3.dist += (T3.tDist - T3.dist)*kk;
   var dir = new THREE.Vector3(0.72, 0.7, 0.8).normalize(); T3.cam.position.copy(T3.target).addScaledVector(dir, T3.dist); T3.cam.lookAt(T3.target);
   T3.renderer.render(sc, T3.cam);
 }
 function vivo3dReset(){
   try{ if(T3.renderer){ T3.renderer.dispose(); } }catch(e){}
-  T3.listo = false; T3.renderer = null; T3.scene = null; T3.crates = []; T3.cratesN = -1; T3.productosKey = ""; T3.productos = []; T3.personasM = []; T3.camionesM = []; T3.interior = []; T3.nubes = []; T3.texCache = {}; T3.abiertoAnt = null; T3.abiertoM = null; T3.stockTexto = null; T3.hora = -1;
+  T3.listo = false; T3.renderer = null; T3.scene = null; T3.zonas = []; T3.hover = null; T3.foco = null; T3.almacenTexto = null; T3.almacenKey = ""; T3.crates = []; T3.cratesN = -1; T3.productosKey = ""; T3.productos = []; T3.personasM = []; T3.camionesM = []; T3.interior = []; T3.nubes = []; T3.texCache = {}; T3.abiertoAnt = null; T3.abiertoM = null; T3.stockTexto = null; T3.hora = -1;
   MASCOTAS.forEach(function(m){ m.m3 = null; }); VIVO.personas.forEach(function(p){ p.m3 = null; }); VIVO.motos.forEach(function(m){ m.m3 = null; }); VIVO.camiones.forEach(function(c){ c.m3 = null; }); VIVO.efectos.forEach(function(e){ e.m3 = null; }); FIESTA.particulas.forEach(function(q){ q.wz = undefined; });
 }
 // ---------- Mascotas del local: Otto (perrito blanco), Ramón (perrito oscuro) y Duko (gata carey) ----------
@@ -1310,7 +1418,7 @@ function vivoPaso(ts){
   }
 }
 function moverMoto(m, dt){
-  (VIVO.ruteros||[]).forEach(function(r){ r.oculto = !!m.fuera; });
+  (VIVO.ruteros||[]).forEach(function(r){ if(VIVO.motos[r.camion||0] === m) r.oculto = !!m.fuera; });
   if(m.fuera){ m.t += dt; if(m.t < 2.2){ m.x += 4*dt; } else if(m.t < m.dur){ m.x = 20; } else if(m.t < m.dur + 2.6){ if(m.x > 19) m.x = -4; m.x += 4*dt; if(m.x >= m.px){ m.x = m.px; m.fuera = false; } } else { m.x = m.px; m.fuera = false; } }
 }
 function moverCamion(c, dt){
@@ -1322,7 +1430,7 @@ function clienteCompra(ev){
   var color = COLORES_ROPA[Math.floor(Math.random()*COLORES_ROPA.length)];
   var piel = ["#f1c9a5","#d9a97c","#b98357","#8d5a3b"][Math.floor(Math.random()*4)];
   var kgTotal = (v.items||[]).reduce(function(s,it){ return s + (num(it.kg) > 0 ? num(it.kg) : 0); }, 0);
-  var moto = VIVO.motos[0], enRuta = esVentaEnRuta(v) && !!moto;
+  var moto = camionDe(v.vendedor), enRuta = esVentaEnRuta(v) && !!moto;
   var textoPago = pendiente ? "Debe "+fmt(saldoPendiente(v)) : "Paga "+fmt(total)+(v.metodoPago&&v.metodoPago!=="efectivo" ? " · "+metodoLabel(v.metodoPago) : "");
   function celebra(){ if(ev.celebra) setTimeout(function(){ celebrar(ev.celebra, /grande/.test(ev.celebra) ? "monedas" : "confeti"); }, 300); }
   if(enRuta){
@@ -1360,13 +1468,20 @@ function ambiente(dt){
   if(!w.ruta.length && !w.espera && !w.acciones.length){ VIVO.tOcio = (VIVO.tOcio||0) + dt; if(VIVO.tOcio > 7 + Math.random()*8){ VIVO.tOcio = 0; w.acciones = [ { ruta:[{x:2.4,y:3.4},{x:2.4,y:3.1}] }, { espera:1.2 }, { ruta:[{x:4.9,y:3.4}] } ]; } }
 }
 function vivoReconstruirMotos(){
-  VIVO.motos = [{ nombre:"REPARTO", quien:"", x:5.2, px:5.2, y:9.45, color:"#2a78d6", fuera:false, t:0, dur:0 }];
+  VIVO.motos = [{ nombre:"REPARTO 1", quien:"", chofer:"", x:5.2, px:5.2, y:9.45, color:"#2a78d6", fuera:false, t:0, dur:0 }, { nombre:"REPARTO 2", quien:"", chofer:"", x:10.4, px:10.4, y:9.45, color:"#1baf7a", fuera:false, t:0, dur:0 }];
 }
+function camionDe(vendedor){
+  var r = (VIVO.ruteros||[]).find(function(x){ return normalizar(x.nombre)===normalizar(vendedor||""); });
+  if(r && VIVO.motos[r.camion||0]) return VIVO.motos[r.camion||0];
+  return VIVO.motos.find(function(m){ return !m.fuera; }) || VIVO.motos[0] || null;
+}
+function camionCercano(x){ var mejor = VIVO.motos[0]; VIVO.motos.forEach(function(m){ if(Math.abs(m.px - x) < Math.abs(mejor.px - x)) mejor = m; }); return mejor ? mejor.px : x; }
 function vivoRuteros(){
   var ruta = rutaHoy().slice().sort().slice(0, 3);
   var clave = ruta.join("|"); if(VIVO.ruterosClave === clave && VIVO.ruteros && VIVO.ruteros.every(function(c){ return c.viva; })) return;
-  (VIVO.ruteros||[]).forEach(function(c){ c.viva = false; }); VIVO.ruterosClave = clave; var m = VIVO.motos[0] || { px:5.2 };
-  VIVO.ruteros = ruta.map(function(n, i){ var pr = nuevaPersona({ x:m.px + 1.5 + i*0.7, y:9.0, color:i===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; return pr; });
+  (VIVO.ruteros||[]).forEach(function(c){ c.viva = false; }); VIVO.ruterosClave = clave; VIVO.motos.forEach(function(m){ m.chofer = ""; });
+  VIVO.ruteros = ruta.map(function(n, i){ var nm = VIVO.motos.length || 1, ci = i % nm, m = VIVO.motos[ci] || { px:5.2 }; if(m && !m.chofer) m.chofer = n;
+    var pr = nuevaPersona({ x:m.px + 1.5 + Math.floor(i/nm)*0.7, y:9.0, color:ci===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; pr.camion = ci; return pr; });
 }
 function vivoCajeros(){
   var admins = (S.usuarios||[]).filter(function(u){ return u.rol==="admin" && u.nombre && !enRutaHoy(u.nombre); }).map(function(u){ return String(u.nombre); }).sort();
@@ -1432,8 +1547,9 @@ function vivoPanelHtml(){
 }
 function renderEnVivo(){
   var f = todayISO();
-  return '<h1 class="section-title"><span class="live-dot"></span>Rico Pollo en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
+  return '<h1 class="section-title"><span class="live-dot"></span>Rico Pollo en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. Toque la caja, la cámara, la vitrina, el almacén, los camiones o el ranking (o los botones de abajo) para ver sus números. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
     + '<div class="vivo-grid"><div class="card vivo-card"><canvas id="vivo-canvas" aria-label="Escena del local en vivo"></canvas>'
+    + '<div id="vivo-zona-card" class="vivo-zona-card" style="display:none;"></div>'+vivoZonasBarHtml()
     + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
     + '<div class="card" id="vivo-panel">'+vivoPanelHtml()+'</div></div>';
 }
@@ -1454,6 +1570,7 @@ function vivoMontar(){
 function vivoRefrescar(){
   var panel = document.getElementById("vivo-panel"); if(!panel) return false;
   vivoSincronizar(); if(!document.querySelector(".overlay")) panel.innerHTML = vivoPanelHtml();
+  try{ vivoZonasAlertas(); if(VIVO.zonaActiva) vivoZonaPintar(); }catch(e){ console.error(e); }
   var est = document.getElementById("vivo-estado"); if(est) est.textContent = (S.online ? "Conectado" : "Sin internet")+" · "+(VIVO.cola.length ? VIVO.cola.length+" en camino" : "se actualiza solo");
   return true;
 }
@@ -1543,7 +1660,7 @@ function abrirFormGasto(e){
     + '<div class="field"><label>Forma de pago</label><div class="pay-toggle" id="g-metodo">'+METODOS.map(function(m){ return '<button type="button" class="pay-opt'+(metodoK(g.metodo)===m?' on':'')+'" data-action="g-metodo" data-val="'+m+'">'+metodoLabel(m)+'</button>'; }).join("")+'</div></div></div>'
     + '<label class="chk"><input type="checkbox" id="g-kardex"'+(conKardex?' checked':'')+'> Es compra de mercadería (entra al Kardex)</label>'
     + '<div id="g-kardex-campos" class="grid-2" style="'+(conKardex?'':'display:none;')+'"><div class="field"><label for="g-prod">Producto</label><input type="text" id="g-prod" list="g-prod-lista" placeholder="Ej. POLLO ENTERO" value="'+escapeHtml(conKardex?g.kardex.producto:"")+'"><datalist id="g-prod-lista">'+productosNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div>'
-    + '<div class="field"><label for="g-kg">Kilos / unidades</label><input type="number" id="g-kg" inputmode="decimal" step="0.01" min="0" placeholder="0" value="'+(conKardex?num(g.kardex.kg):"")+'"></div></div>'
+    + '<div class="field"><label for="g-kg">Kilos / unidades</label><input type="number" id="g-kg" inputmode="decimal" step="0.01" min="0" placeholder="0" value="'+(conKardex?num(g.kardex.kg):"")+'"></div>'+(edit ? '' : '<div class="field"><label for="g-merma-kg">Merma al recibir (kg, opcional)</label><input type="number" id="g-merma-kg" inputmode="decimal" step="0.01" min="0" placeholder="0"></div><div class="field"><label for="g-merma-motivo">Motivo de la merma</label><select id="g-merma-motivo">'+MOTIVOS_MERMA.map(function(x){ return '<option value="'+escapeHtml(x)+'"'+(x==="Peso de menos del proveedor"?' selected':'')+'>'+escapeHtml(x)+'</option>'; }).join("")+'</select></div>')+'</div>'
     + '<div class="field"><label for="g-foto">Foto del comprobante (opcional) · se puede recortar y leer el monto</label><input type="file" id="g-foto" accept="image/*"><img id="g-foto-prev" class="foto-prev" src="'+(g.foto||"")+'" alt="" style="'+(g.foto?'':'display:none;')+'">'+(g.foto ? '<button type="button" class="btn btn-sm" data-action="g-quitar-foto" style="margin-top:6px;">Quitar foto</button>' : '')+'</div>'
     + '<div class="pin-error" id="g-error"></div>'
     + '<div class="actions-row">'+(edit ? '<button class="btn btn-danger btn-sm" data-action="eliminar-gasto" data-id="'+e.id+'">Eliminar</button>' : '')+'<span class="sp"></span><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-gasto" data-id="'+(edit?e.id:"")+'">Guardar</button></div>'
@@ -1643,6 +1760,7 @@ function guardarGasto(id){
   if(!cat){ err.textContent = "Elige la categoría."; return; }
   if(!(monto > 0)){ err.textContent = "Escribe el monto."; return; }
   if(conK && (!prod || !(kg > 0))){ err.textContent = "Para el Kardex escribe el producto y los kilos."; return; }
+  var mkEl = document.getElementById("g-merma-kg"), mkg = (conK && mkEl) ? r2(mkEl.value) : 0; if(mkg > kg){ err.textContent = "La merma no puede ser mayor que los kilos comprados."; return; }
   if(!desc && !conK){ err.textContent = "Escribe una descripción corta."; return; }
   var fp = parseFecha(fecha), ahora = Date.now(), existente = id ? S.egresos[id] : null;
   var obj = { tipo:"gasto", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:cat, descripcion:desc || (conK ? "Compra de "+prod : ""), monto:monto, metodo:metodo,
@@ -1650,6 +1768,11 @@ function guardarGasto(id){
   var docId = id || genId("eg");
   S.egresos[docId] = Object.assign({}, obj, { id:docId });
   S.db.collection("egresos").doc(docId).set(obj).then(function(){ toast(id ? "Gasto actualizado" : "Gasto registrado"); }).catch(function(e){ toast("No se pudo guardar: revisa tu internet"); console.error(e); });
+  if(mkg > 0 && !id){ // merma al recibir: se descuenta del Kardex en el mismo momento de la compra
+    var mid = genId("mm"), mot = (document.getElementById("g-merma-motivo")||{}).value || MOTIVOS_MERMA[4];
+    var mobj = { tipo:"merma", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:"Merma", descripcion:mot+" · al recibir la compra"+(desc ? " ("+desc+")" : ""), motivo:mot, monto:0, metodo:"efectivo", kardex:{ producto:prod.toUpperCase(), kg:mkg }, compraId:docId, foto:null, registradoPor:S.user.nombre, creadoEn:ahora+1, actualizadoEn:ahora, eliminado:false };
+    S.egresos[mid] = Object.assign({}, mobj, { id:mid }); S.db.collection("egresos").doc(mid).set(mobj).catch(function(e){ console.error(e); });
+  }
   closeOverlay(); render();
 }
 function eliminarGasto(id, restaurar, yaConfirmado){
@@ -1751,11 +1874,14 @@ function guardarCierre(){
 
 // ---------- AJUSTES ----------
 function renderAjustes(){
-  return '<h1 class="section-title">Ajustes</h1><p class="section-sub">Categorías de gastos, contraseña y datos de la página.</p>'
+  return '<h1 class="section-title">Ajustes</h1><p class="section-sub">Categorías, metas, gastos fijos y cuotas, trabajadores y sueldos, mayoristas con tope de crédito, tinas, contraseña.</p>'
     + '<div class="cols-2"><div class="card"><h2>Categorías de gastos</h2><div class="cat-list">'+S.categorias.map(function(c, i){ return '<div class="cat-item"><span>'+escapeHtml(c)+'</span><button class="btn btn-sm btn-ghost" data-action="cat-subir" data-val="'+i+'" title="Subir">▲</button><button class="btn btn-sm btn-ghost" data-action="cat-renombrar" data-val="'+i+'">Renombrar</button><button class="btn btn-sm btn-ghost" data-action="cat-quitar" data-val="'+i+'" style="color:var(--danger);">Quitar</button></div>'; }).join("")+'</div>'
     + '<div class="toolbar" style="margin-top:12px;"><input type="text" id="cat-nueva" placeholder="Nueva categoría" maxlength="40" style="flex:1;"><button class="btn" data-action="cat-agregar">Agregar</button></div><p class="kard-sub">Quitar una categoría no borra los gastos ya registrados con ella.</p></div>'
     + '<div><div class="card"><h2>Metas del mes</h2><p class="kard-sub" style="margin-bottom:8px;">Se muestran en el Tablero cuando el periodo es un mes. Deje 0 para no usar.</p><div class="grid-2"><div class="field"><label for="meta-venta">Meta de ventas (S/)</label><input type="number" id="meta-venta" min="0" step="1" value="'+(S.config.metas.venta||"")+'"></div><div class="field"><label for="meta-utilidad">Meta de utilidad (S/)</label><input type="number" id="meta-utilidad" min="0" step="1" value="'+(S.config.metas.utilidad||"")+'"></div></div><div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary btn-sm" data-action="guardar-metas">Guardar metas</button></div></div>'
     + recurrentesAjustesHtml()
+    + trabajadoresAjustesHtml()
+    + mayoristasAjustesHtml()
+    + tinasAjustesHtml()
     + '<div class="card"><h2>Instalar como aplicación</h2><p class="kard-sub" style="margin-bottom:8px;">Queda con su propio ícono y abre a pantalla completa, en la computadora y en el celular.</p>'+(window.__instalar ? '<button class="btn btn-primary" data-action="instalar-app">Instalar en este equipo</button>' : (/iphone|ipad/i.test(navigator.userAgent) ? '<p>En iPhone: toque el botón <strong>Compartir</strong> de Safari y luego <strong>"Agregar a inicio"</strong>.</p>' : (window.matchMedia("(display-mode: standalone)").matches ? '<p class="note ok">Ya está instalada en este equipo.</p>' : '<p>En Chrome: menú <strong>⋮</strong> → <strong>"Instalar aplicación"</strong> (o "Agregar a la pantalla de inicio" en el celular).</p>')))+'</div>'
     + '<div class="card"><h2>Mi cuenta</h2><p>Entraste como <strong>'+escapeHtml(S.user.nombre)+'</strong> (administradora). Es el mismo usuario y contraseña de la app '+CFG.app+'.</p>'
     + '<div class="actions-row" style="justify-content:flex-start;"><button class="btn" data-action="cambiar-pass">Cambiar mi contraseña</button><button class="btn btn-ghost" data-action="cerrar-sesion">Cerrar sesión</button></div></div>'
@@ -1825,7 +1951,8 @@ function categoriaSugerida(nombre, tipo, ruc, comp){
   if(/HONORARIO|RECIBO POR H|R\.?H\.?E|\bRH\b/.test(n)) return S.categorias.indexOf("Honorarios") >= 0 ? "Honorarios" : "Sueldos";
   if(/AVICOLA|AV COLA|POLLO|GRANJA|\bAVES\b|AVIC/.test(n)) return "Compra de pollo";
   if(/GRIFO|COMBUST|PETROL|PRIMAX|REPSOL|GASOLIN|GLP|ESTACION DE SERV/.test(n)) return "Transporte / combustible";
-  if(/LUZ DEL SUR|ELECTR|SEDAPAL|AGUA|CALIDDA|CLARO|MOVISTAR|ENTEL|BITEL|TELEF|INTERNET|CABLE/.test(n)) return "Servicios";
+  if(/LUZ DEL SUR|ELECTR|SEDAPAL|AGUA|CALIDDA|CLARO|MOVISTAR|ENTEL|BITEL|TELEF|INTERNET|CABLE/.test(n)) return S.categorias.indexOf("Servicios básicos del local") >= 0 ? "Servicios básicos del local" : "Servicios";
+  if(/EMBUTID|CHORIZO|HOT ?DOG|SALCHICH|JAMON|CREMA|MAYONES|KETCHUP|MOSTAZA|SALSA/.test(n)) return "Embutidos y cremas";
   if(/ALQUILER|ARRENDAM|INMOBILIARIA/.test(n)) return "Alquiler";
   return "Insumos";
 }
@@ -1866,32 +1993,120 @@ function importarGuardar(){
   lote.commit().then(function(){ toast(lista.length+" gasto"+(lista.length===1?"":"s")+" importado"+(lista.length===1?"":"s")); }).catch(function(e){ console.error(e); toast("No se pudo guardar todo: revisa tu internet"); });
   closeOverlay(); render();
 }
-// ---------- Gastos fijos del mes (recurrentes) ----------
+// ---------- Gastos fijos del mes (recurrentes), cuotas del local y planilla de trabajadores ----------
+function recurrentesTodos(){
+  var lista = (S.config.recurrentes||[]).slice();
+  (S.config.trabajadores||[]).forEach(function(tr){ lista.push({ id:tr.id, descripcion:"Sueldo · "+tr.nombre, categoria:"Sueldos", monto:num(tr.sueldo), dia:tr.dia||1, metodo:tr.metodo||"efectivo", trabajador:tr.nombre }); });
+  return lista;
+}
+function cuotasPagadas(id){ var n = 0; Object.keys(S.egresos).forEach(function(k){ var e = S.egresos[k]; if(!e.eliminado && e.recurrenteId===id) n++; }); return n; }
 function recurrentesPendientes(){
-  var hoyF = todayISO(), mesRef = hoyF.slice(0,7), lista = S.config.recurrentes||[];
+  var hoyF = todayISO(), mesRef = hoyF.slice(0,7), lista = recurrentesTodos();
   var hechos = {}; Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(!e.eliminado && e.recurrenteId && String(e.fecha).slice(0,7)===mesRef) hechos[e.recurrenteId] = e; });
-  return lista.map(function(rc){ return { rc:rc, hecho:hechos[rc.id]||null }; });
+  return lista.map(function(rc){ var pag = rc.cuotas ? cuotasPagadas(rc.id) : 0; return { rc:rc, hecho:hechos[rc.id]||null, pagadas:pag, completo:!!(rc.cuotas && pag >= rc.cuotas && !hechos[rc.id]) }; });
 }
 function registrarRecurrente(id){
-  var rc = (S.config.recurrentes||[]).find(function(x){ return x.id===id; }); if(!rc) return; var hoyF = todayISO(), a = Number(hoyF.slice(0,4)), m = Number(hoyF.slice(5,7));
+  var rc = recurrentesTodos().find(function(x){ return x.id===id; }); if(!rc) return; var hoyF = todayISO(), a = Number(hoyF.slice(0,4)), m = Number(hoyF.slice(5,7));
   var fecha = hoyF.slice(0,7)+"-"+pad(Math.min(Number(rc.dia)||1, ultimoDia(a, m))); var fp = parseFecha(fecha), eid = genId("eg");
-  var obj = { tipo:"gasto", origen:"recurrente", recurrenteId:rc.id, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:rc.categoria||"Otros", descripcion:rc.descripcion, monto:r2(rc.monto), metodo:rc.metodo||"banco", kardex:null, foto:null, registradoPor:S.user.nombre, creadoEn:Date.now(), actualizadoEn:Date.now(), eliminado:false };
-  S.egresos[eid] = Object.assign({}, obj, { id:eid }); S.db.collection("egresos").doc(eid).set(obj).then(function(){ toast("Registrado: "+rc.descripcion); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  var nCuota = rc.cuotas ? cuotasPagadas(rc.id)+1 : 0; var descr = rc.descripcion + (nCuota ? " · cuota "+nCuota+" de "+rc.cuotas : "");
+  var obj = { tipo:"gasto", origen:rc.trabajador ? "planilla" : "recurrente", recurrenteId:rc.id, trabajador:rc.trabajador||null, cuota:nCuota||null, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:rc.categoria||"Otros", descripcion:descr, monto:r2(rc.monto), metodo:rc.metodo||"banco", kardex:null, foto:null, registradoPor:S.user.nombre, creadoEn:Date.now(), actualizadoEn:Date.now(), eliminado:false };
+  S.egresos[eid] = Object.assign({}, obj, { id:eid }); S.db.collection("egresos").doc(eid).set(obj).then(function(){ toast("Registrado: "+descr); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
 }
 function recurrentesHtml(){
-  var lista = recurrentesPendientes(); if(!lista.length) return '';
-  var pend = lista.filter(function(x){ return !x.hecho; });
-  return '<div class="card"><h2>Gastos fijos de '+MESES[Number(todayISO().slice(5,7))-1]+' <span class="kard-sub">'+(pend.length ? pend.length+' por registrar' : 'todos registrados')+' · se definen en Ajustes</span></h2><ul class="ledger">'
-    + lista.map(function(x){ var rc = x.rc; return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+'</span></span><span class="lv">'+fmt(rc.monto)+' '+(x.hecho ? '<span class="tag efectivo">✓ registrado '+fechaCorta(x.hecho.fecha)+'</span>' : '<button class="btn btn-sm btn-primary" data-action="rec-registrar" data-id="'+rc.id+'">Registrar</button>')+'</span></li>'; }).join("")
+  var lista = recurrentesPendientes().filter(function(x){ return !x.completo; }); if(!lista.length) return '';
+  var pend = lista.filter(function(x){ return !x.hecho; }); var planilla = lista.filter(function(x){ return x.rc.trabajador; }).reduce(function(s,x){ return s+num(x.rc.monto); }, 0);
+  return '<div class="card"><h2>Gastos fijos y planilla de '+MESES[Number(todayISO().slice(5,7))-1]+' <span class="kard-sub">'+(pend.length ? pend.length+' por registrar' : 'todos registrados')+(planilla ? ' · planilla '+fmt(planilla) : '')+' · se definen en Ajustes</span></h2><ul class="ledger">'
+    + lista.map(function(x){ var rc = x.rc; var extra = rc.cuotas ? ' · cuota '+Math.min(rc.cuotas, x.pagadas+(x.hecho?0:1))+' de '+rc.cuotas : ''; return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+extra+'</span></span><span class="lv">'+fmt(rc.monto)+' '+(x.hecho ? '<span class="tag efectivo">✓ registrado '+fechaCorta(x.hecho.fecha)+'</span>' : '<button class="btn btn-sm btn-primary" data-action="rec-registrar" data-id="'+rc.id+'">Registrar</button>')+'</span></li>'; }).join("")
     + '</ul>'+(pend.length > 1 ? '<div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="rec-registrar-todos">Registrar todos los pendientes</button></div>' : '')+'</div>';
 }
 function recurrentesAjustesHtml(){
   var lista = S.config.recurrentes||[];
-  return '<div class="card"><h2>Gastos fijos del mes</h2><p class="kard-sub" style="margin-bottom:8px;">Planilla, alquiler, luz, agua, préstamos… Se definen una vez y cada mes aparecen en Gastos para registrarlos con un toque.</p>'
-    + (lista.length ? '<ul class="ledger">'+lista.map(function(rc){ return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+' · '+metodoLabel(rc.metodo)+'</span></span><span class="lv">'+fmt(rc.monto)+' <button class="btn btn-sm btn-ghost" data-action="rec-quitar" data-id="'+rc.id+'" style="color:var(--danger);">Quitar</button></span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay gastos fijos.</p>')
-    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="rec-desc">Descripción</label><input type="text" id="rec-desc" maxlength="60" placeholder="Ej. Planilla · Juan Pérez"></div><div class="field"><label for="rec-cat">Categoría</label><select id="rec-cat">'+S.categorias.map(function(c){ return '<option'+(c==="Sueldos"?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join("")+'</select></div></div>'
+  return '<div class="card"><h2>Gastos fijos del mes y cuotas</h2><p class="kard-sub" style="margin-bottom:8px;">Alquiler, luz, agua, internet, préstamos y las cuotas de la compra del local. Se definen una vez y cada mes aparecen en Gastos para registrarlos con un toque. Si es en cuotas, escriba cuántas son: la página lleva la cuenta (cuota 5 de 36) y deja de pedirla al terminar.</p>'
+    + (lista.length ? '<ul class="ledger">'+lista.map(function(rc){ var pag = rc.cuotas ? cuotasPagadas(rc.id) : 0; return '<li><span class="lk">'+escapeHtml(rc.descripcion)+' <span class="kard-sub">'+escapeHtml(rc.categoria||"")+' · día '+(rc.dia||1)+' · '+metodoLabel(rc.metodo)+(rc.cuotas ? ' · '+pag+' de '+rc.cuotas+' cuotas pagadas'+(pag >= rc.cuotas ? ' ✓ terminado' : ', faltan '+fmt((rc.cuotas-pag)*num(rc.monto))) : '')+'</span></span><span class="lv">'+fmt(rc.monto)+' <button class="btn btn-sm btn-ghost" data-action="rec-quitar" data-id="'+rc.id+'" style="color:var(--danger);">Quitar</button></span>'+(rc.cuotas ? '<span class="lb"><div class="meter '+(pag >= rc.cuotas ? 'ok' : '')+'"><i style="width:'+Math.min(100, pct(pag, rc.cuotas)).toFixed(0)+'%"></i></div></span>' : '')+'</li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay gastos fijos.</p>')
+    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="rec-desc">Descripción</label><input type="text" id="rec-desc" maxlength="60" placeholder="Ej. Cuota del local · Banco / Luz del local"></div><div class="field"><label for="rec-cat">Categoría</label><select id="rec-cat">'+S.categorias.map(function(c){ return '<option'+(c==="Alquiler"?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join("")+'</select></div></div>'
     + '<div class="grid-2"><div class="field"><label for="rec-monto">Monto mensual (S/)</label><input type="number" id="rec-monto" min="0" step="0.01" placeholder="0.00"></div><div class="field"><label for="rec-dia">Día del mes en que se paga</label><input type="number" id="rec-dia" min="1" max="31" value="1"></div></div>'
-    + '<div class="grid-2"><div class="field"><label for="rec-metodo">Forma de pago</label><select id="rec-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="banco"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div><div class="field" style="justify-content:flex-end;"><button class="btn btn-primary" data-action="rec-agregar">Agregar gasto fijo</button></div></div></div>';
+    + '<div class="grid-2"><div class="field"><label for="rec-metodo">Forma de pago</label><select id="rec-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="banco"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div><div class="field"><label for="rec-cuotas">¿Es en cuotas? Cuántas en total (vacío si no)</label><input type="number" id="rec-cuotas" min="0" step="1" placeholder="Ej. 36"></div></div>'
+    + '<div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary" data-action="rec-agregar">Agregar gasto fijo</button></div></div>';
+}
+function trabajadoresAjustesHtml(){
+  var lista = S.config.trabajadores||[]; var total = lista.reduce(function(s,t){ return s+num(t.sueldo); }, 0);
+  return '<div class="card"><h2>Trabajadores y sueldos <span class="kard-sub">planilla del mes '+fmt(total)+'</span></h2><p class="kard-sub" style="margin-bottom:8px;">Cada trabajador con su sueldo mensual. Cada mes aparecen en Gastos como "Sueldo · nombre" para registrarlos con un toque (categoría Sueldos).</p>'
+    + (lista.length ? '<ul class="ledger">'+lista.map(function(t){ return '<li><span class="lk">'+escapeHtml(t.nombre)+' <span class="kard-sub">día '+(t.dia||1)+' · '+metodoLabel(t.metodo)+'</span></span><span class="lv">'+fmt(t.sueldo)+' <button class="btn btn-sm btn-ghost" data-action="trab-quitar" data-id="'+t.id+'" style="color:var(--danger);">Quitar</button></span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay trabajadores.</p>')
+    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="trab-nombre">Nombre</label><input type="text" id="trab-nombre" maxlength="40" placeholder="Ej. CRISTIAN"></div><div class="field"><label for="trab-sueldo">Sueldo mensual (S/)</label><input type="number" id="trab-sueldo" min="0" step="0.01" placeholder="0.00"></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="trab-dia">Día de pago</label><input type="number" id="trab-dia" min="1" max="31" value="30"></div><div class="field"><label for="trab-metodo">Forma de pago</label><select id="trab-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="efectivo"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div></div>'
+    + '<div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary" data-action="trab-agregar">Agregar trabajador</button></div></div>';
+}
+function mayoristasEstado(){
+  var deudas = {}; Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !estaPendiente(v)) return; var k = normalizar(v.cliente||""); deudas[k] = (deudas[k]||0) + saldoPendiente(v); });
+  return (S.config.mayoristas||[]).map(function(m){ var d = r2(deudas[normalizar(m.cliente)]||0), tope = num(m.tope); return { m:m, deuda:d, pct:tope > 0 ? d/tope*100 : 0, pasado:tope > 0 && d >= tope, cerca:tope > 0 && d >= tope*0.8 && d < tope }; });
+}
+function alarmaHtml(){
+  var l = mayoristasEstado().filter(function(x){ return x.pasado; }); if(!l.length) return "";
+  return '<div class="note danger alarma" data-action="vista" data-val="avisos" style="cursor:pointer;"><span class="ic">'+ico("alarma")+'</span><div><strong>ALARMA DE CRÉDITO:</strong> '+l.map(function(x){ return escapeHtml(x.m.cliente)+' debe '+fmt(x.deuda)+' (tope '+fmt(x.m.tope)+')'; }).join(' · ')+'. No darle más crédito hasta que pague.</div></div>';
+}
+function mayoristasAjustesHtml(){
+  var est = mayoristasEstado();
+  return '<div class="card"><h2>Clientes mayoristas con crédito</h2><p class="kard-sub" style="margin-bottom:8px;">Ponga un tope de deuda a cada mayorista. Cuando lo que debe (según las notas de la app) llega al tope, suena la alarma roja arriba de toda la página y en Avisos; al 80 % avisa que está cerca.</p>'
+    + (est.length ? '<ul class="ledger">'+est.map(function(x){ var p = Math.min(100, x.pct); return '<li><span class="lk">'+escapeHtml(x.m.cliente)+' <span class="kard-sub">tope '+fmt(x.m.tope)+'</span></span><span class="lv '+(x.pasado ? 'negv' : '')+'">debe '+fmt(x.deuda)+' <button class="btn btn-sm btn-ghost" data-action="may-quitar" data-id="'+x.m.id+'" style="color:var(--danger);">Quitar</button></span><span class="lb"><div class="meter '+(x.pasado ? 'warn' : p >= 80 ? '' : 'ok')+'"><i style="width:'+p.toFixed(0)+'%"></i></div></span><span class="ls">'+(x.pasado ? '⚠ pasó el tope' : x.cerca ? 'cerca del tope ('+pctTxt(x.pct)+')' : 'usa el '+pctTxt(x.pct)+' de su crédito')+'</span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay mayoristas.</p>')
+    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="may-cliente">Cliente (como está en las notas)</label><input type="text" id="may-cliente" list="may-lista" maxlength="60" placeholder="Ej. RESTAURANTE EL BUEN SABOR"><datalist id="may-lista">'+clientesNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div><div class="field"><label for="may-tope">Tope de crédito (S/)</label><input type="number" id="may-tope" min="0" step="1" placeholder="Ej. 1500"></div></div>'
+    + '<div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary" data-action="may-agregar">Agregar mayorista</button></div></div>';
+}
+function tinasAjustesHtml(){
+  return '<div class="card"><h2>Tinas (bandejas)</h2><p class="kard-sub" style="margin-bottom:8px;">Cuántas tinas tiene el negocio en total. Con eso la pestaña Tinas muestra cuántas quedan en el local y cuántas están en la calle.</p>'
+    + '<div class="grid-2"><div class="field"><label for="tinas-total">Tinas del negocio (total)</label><input type="number" id="tinas-total" min="0" step="1" value="'+(S.config.tinas.total||"")+'"></div><div class="field" style="justify-content:flex-end;"><button class="btn btn-primary" data-action="guardar-tinas-config">Guardar</button></div></div></div>';
+}
+function guardarListaConfig(parte, lista, msg){ S.config[parte] = lista; var d = {}; d[parte] = lista; d.actualizadoEn = Date.now(); d.por = S.user.nombre; S.db.doc("control/config").set(d, { merge:true }).then(function(){ if(msg) toast(msg); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
+function clientesNombres(){ var vis = {}, out = []; function add(n){ n = String(n||"").trim(); if(!n) return; var k = normalizar(n); if(!vis[k]){ vis[k] = 1; out.push(n); } } Object.keys(S.ventas).forEach(function(id){ add(S.ventas[id].cliente); }); Object.keys(S.tinas).forEach(function(id){ add(S.tinas[id].cliente); }); return out.sort(); }
+
+// ---------- TINAS (bandejas que salen con los pedidos y deben volver) ----------
+function calcTinas(r){
+  var porC = {}, lista = [], salP = 0, entP = 0;
+  Object.keys(S.tinas).forEach(function(id){ var t = S.tinas[id]; if(t.eliminado) return; var k = normalizar(t.cliente||"(sin nombre)"); var g = porC[k] || (porC[k] = { cliente:String(t.cliente||"(sin nombre)").trim(), saldo:0, salidas:0, entradas:0, ultimaSalida:"", ultimaEntrada:"", desde:"", movs:[] });
+    var n = Math.round(num(t.cantidad)), f = String(t.fecha||"").slice(0,10); g.movs.push({ f:f, c:num(t.creadoEn), n:t.tipo==="entrada" ? -n : n });
+    if(t.tipo==="entrada"){ g.entradas += n; if(f > g.ultimaEntrada) g.ultimaEntrada = f; } else { g.salidas += n; if(f > g.ultimaSalida) g.ultimaSalida = f; }
+    if(f >= r.desde && f <= r.hasta){ lista.push(t); if(t.tipo==="entrada") entP += n; else salP += n; } });
+  var porCliente = Object.keys(porC).map(function(k){ var g = porC[k]; g.movs.sort(function(a,b){ return (a.f<b.f?-1:a.f>b.f?1:0) || (a.c-b.c); }); var saldo = 0; g.movs.forEach(function(m){ var antes = saldo; saldo += m.n; if(antes <= 0 && saldo > 0) g.desde = m.f; }); g.saldo = saldo; if(saldo <= 0) g.desde = ""; return g; }).sort(function(a,b){ return (b.saldo-a.saldo) || (a.cliente<b.cliente?-1:1); });
+  lista.sort(function(a,b){ return (a.fecha<b.fecha?1:a.fecha>b.fecha?-1:0) || (num(b.creadoEn)-num(a.creadoEn)); });
+  return { porCliente:porCliente, enCalle:porCliente.reduce(function(s,g){ return s + Math.max(0, g.saldo); }, 0), conTinas:porCliente.filter(function(g){ return g.saldo > 0; }).length, salidasPer:salP, entradasPer:entP, lista:lista };
+}
+function renderTinas(){
+  var r = periodo(), T = calcTinas(r), A = S.config.alertas, hoyF = todayISO(), total = num(S.config.tinas.total);
+  var filas = T.porCliente.filter(function(g){ return g.saldo !== 0; }).map(function(g){ var dias = g.desde ? diasEntre(g.desde, hoyF) : 0; var tarde = g.saldo > 0 && A.tinasDias > 0 && dias >= A.tinasDias;
+    return '<tr'+(tarde ? ' style="background:var(--danger-bg);"' : '')+'><td><strong>'+escapeHtml(g.cliente)+'</strong></td><td class="num '+(g.saldo > 0 ? 'negv' : 'pos')+'"><strong>'+g.saldo+'</strong></td><td style="white-space:nowrap;">'+(g.desde ? fechaDisplay(g.desde)+' <span class="kard-sub">('+dias+' día'+(dias===1?'':'s')+(tarde ? ' ⚠' : '')+')</span>' : '—')+'</td><td class="kard-sub" style="white-space:nowrap;">'+(g.ultimaEntrada ? fechaDisplay(g.ultimaEntrada) : '—')+'</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-primary" data-action="nueva-tina" data-val="entrada" data-cliente="'+escapeHtml(g.cliente)+'">Devolución</button> <button class="btn btn-sm" data-action="nueva-tina" data-val="salida" data-cliente="'+escapeHtml(g.cliente)+'">Salida</button></td></tr>'; }).join("");
+  var movs = T.lista.map(function(t){ return '<tr><td style="white-space:nowrap;">'+fechaCorta(t.fecha)+' <span class="kard-sub">'+String(t.fecha).slice(0,4)+'</span></td><td><span class="tag '+(t.tipo==="entrada" ? 'efectivo' : 'merma')+'">'+(t.tipo==="entrada" ? 'Devolución' : 'Salida')+'</span></td><td>'+escapeHtml(t.cliente||"")+(t.nota ? '<div class="kard-sub">'+escapeHtml(t.nota)+'</div>' : '')+'</td><td class="num '+(t.tipo==="entrada" ? 'pos' : 'negv')+'">'+(t.tipo==="entrada" ? '+' : '−')+Math.round(num(t.cantidad))+'</td><td class="kard-sub">'+escapeHtml(t.registradoPor||"")+'</td><td><button class="btn btn-sm btn-ghost" data-action="eliminar-tina" data-id="'+t.id+'" style="color:var(--danger);">Quitar</button></td></tr>'; }).join("");
+  var tarde = T.porCliente.filter(function(g){ return g.saldo > 0 && A.tinasDias > 0 && g.desde && diasEntre(g.desde, hoyF) >= A.tinasDias; }).length;
+  return '<h1 class="section-title">Tinas</h1><p class="section-sub">Control de las tinas (bandejas) que salen con los pedidos y deben regresar. Registre la salida cuando se entregan con producto y la devolución cuando el cliente las regresa. Cada cliente queda con su saldo.</p>'
+    + periodoBarHtml()
+    + '<div class="toolbar"><button class="btn btn-primary" data-action="nueva-tina" data-val="salida">+ Salida de tinas</button><button class="btn" data-action="nueva-tina" data-val="entrada">↩ Devolución</button></div>'
+    + (tarde ? '<div class="note warn">'+tarde+' cliente'+(tarde===1?'':'s')+' tiene'+(tarde===1?'':'n')+' tinas desde hace más de '+A.tinasDias+' días (marcados en rojo). El límite se cambia en Avisos.</div>' : '')
+    + '<div class="stat-row"><div class="stat egr"><div class="label">Tinas en la calle</div><div class="value">'+T.enCalle+'</div><div class="sub">'+(total ? 'de '+total+' del negocio · quedan '+Math.max(0, total - T.enCalle)+' en el local' : 'ponga el total de tinas en Ajustes')+'</div></div><div class="stat"><div class="label">Clientes con tinas</div><div class="value">'+T.conTinas+'</div></div><div class="stat"><div class="label">Salidas · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.salidasPer+'</div></div><div class="stat ing"><div class="label">Devoluciones · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.entradasPer+'</div></div></div>'
+    + '<div class="cols-2"><div class="card"><h2>Por cliente <span class="kard-sub">saldo de tinas que tiene cada uno</span></h2><div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th class="num">Tiene</th><th>Desde</th><th>Última devolución</th><th></th></tr></thead><tbody>'+(filas || '<tr><td colspan="5"><p class="empty">Ningún cliente tiene tinas. Registre la primera salida.</p></td></tr>')+'</tbody></table></div></div>'
+    + '<div class="card"><h2>Movimientos · '+escapeHtml(r.titulo)+'</h2><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th class="num">Tinas</th><th>Por</th><th></th></tr></thead><tbody>'+(movs || '<tr><td colspan="6"><p class="empty">Sin movimientos en este periodo.</p></td></tr>')+'</tbody></table></div></div></div>';
+}
+function abrirFormTina(tipo, cliente){
+  tipo = tipo==="entrada" ? "entrada" : "salida";
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>Registrar tinas</h2>'
+    + '<div class="field"><label>Tipo</label><div class="pay-toggle" id="t-tipo"><button type="button" class="pay-opt'+(tipo==="salida"?' on':'')+'" data-action="tina-tipo" data-val="salida">Salida (se entregan con producto)</button><button type="button" class="pay-opt'+(tipo==="entrada"?' on':'')+'" data-action="tina-tipo" data-val="entrada">Devolución (el cliente las regresa)</button></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="t-fecha">Fecha</label><input type="date" id="t-fecha" value="'+todayISO()+'"></div><div class="field"><label for="t-cant">Cantidad de tinas</label><input type="number" id="t-cant" inputmode="numeric" step="1" min="1" placeholder="Ej. 6"></div></div>'
+    + '<div class="field"><label for="t-cliente">Cliente</label><input type="text" id="t-cliente" list="t-lista" maxlength="60" placeholder="Nombre como está en las notas" value="'+escapeHtml(cliente||"")+'"><datalist id="t-lista">'+clientesNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div>'
+    + '<div class="field"><label for="t-nota">Nota (opcional)</label><input type="text" id="t-nota" maxlength="80" placeholder="Ej. las llevó Cristian con el pedido"></div>'
+    + '<div class="pin-error" id="t-error"></div><div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-tina">Guardar</button></div></div></div>';
+  setTimeout(function(){ var el = document.getElementById(cliente ? "t-cant" : "t-cliente"); if(el) el.focus(); }, 50);
+}
+function guardarTina(){
+  var err = document.getElementById("t-error"); var tb = document.querySelector("#t-tipo .pay-opt.on"); var tipo = tb ? tb.getAttribute("data-val") : "salida";
+  var fecha = document.getElementById("t-fecha").value, cant = Math.round(num(document.getElementById("t-cant").value)), cliente = document.getElementById("t-cliente").value.trim(), nota = document.getElementById("t-nota").value.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; } if(!cliente){ err.textContent = "Escribe el cliente."; return; } if(!(cant > 0)){ err.textContent = "Escribe cuántas tinas."; return; }
+  var fp = parseFecha(fecha), id = genId("tn");
+  var obj = { tipo:tipo, cliente:cliente.toUpperCase(), cantidad:cant, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, nota:nota, registradoPor:S.user.nombre, creadoEn:Date.now(), eliminado:false };
+  S.tinas[id] = Object.assign({}, obj, { id:id });
+  S.db.collection("tinas").doc(id).set(obj).then(function(){ toast(tipo==="entrada" ? "Devolución registrada" : "Salida registrada"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  closeOverlay(); render();
+}
+function eliminarTina(id){
+  var t = S.tinas[id]; if(!t || !confirm("¿Quitar este movimiento de tinas ("+(t.tipo==="entrada" ? "devolución" : "salida")+" de "+t.cantidad+" · "+t.cliente+")?")) return;
+  var cambio = { eliminado:true, eliminadoPor:S.user.nombre, eliminadoEn:Date.now() }; Object.assign(t, cambio);
+  S.db.collection("tinas").doc(id).set(cambio, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render();
 }
 function guardarConfig(parte, obj){ S.config[parte] = Object.assign({}, S.config[parte], obj); var d = {}; d[parte] = S.config[parte]; d.actualizadoEn = Date.now(); d.por = S.user.nombre; S.db.doc("control/config").set(d, { merge:true }).then(function(){ toast("Guardado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
 function guardarCategorias(){ S.db.doc("control/config").set({ categorias:S.categorias, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
@@ -2095,11 +2310,16 @@ function alEntrar(u){
 function conectarDatos(){
   var db = S.db;
   S.unsubs.push(db.collection("egresos").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.egresos[ch.doc.id]; else S.egresos[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("egresos", e); toast("No se pudieron leer los gastos"); }));
-  S.unsubs.push(db.doc("control/config").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null; if(d && Array.isArray(d.categorias) && d.categorias.length) S.categorias = d.categorias.map(String);
+  S.unsubs.push(db.collection("tinas").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.tinas[ch.doc.id]; else S.tinas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("tinas", e); }));
+  S.unsubs.push(db.doc("control/config").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null;
+    if(d && Array.isArray(d.categorias) && d.categorias.length){ S.categorias = d.categorias.map(String); var faltan = CATEGORIAS_NUEVAS.filter(function(c){ return !S.categorias.some(function(x){ return normalizar(x)===normalizar(c); }); }); if(faltan.length){ S.categorias = S.categorias.concat(faltan); db.doc("control/config").set({ categorias:S.categorias }, { merge:true }).catch(function(){}); } }
     if(d && d.alertas) Object.keys(CONFIG_BASE.alertas).forEach(function(k){ if(d.alertas[k] !== undefined) S.config.alertas[k] = num(d.alertas[k]); });
     if(d && d.metas) Object.keys(CONFIG_BASE.metas).forEach(function(k){ if(d.metas[k] !== undefined) S.config.metas[k] = num(d.metas[k]); });
     if(d && d.rutaHoy) S.config.rutaHoy = d.rutaHoy;
     if(d && Array.isArray(d.recurrentes)) S.config.recurrentes = d.recurrentes;
+    if(d && Array.isArray(d.mayoristas)) S.config.mayoristas = d.mayoristas;
+    if(d && Array.isArray(d.trabajadores)) S.config.trabajadores = d.trabajadores;
+    if(d && d.tinas) S.config.tinas = Object.assign({ total:0 }, d.tinas);
     if(!document.querySelector(".overlay")) render(); }, function(){}));
   S.unsubs.push(db.collection("cierres").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.cierres[ch.doc.id]; else S.cierres[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(UI.vista==="caja" && !document.querySelector(".overlay")) render(); }, function(){}));
   db.collection("productos").get().then(function(snap){ S.productos = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id:d.id }); }); }).catch(function(){});
@@ -2157,6 +2377,8 @@ document.addEventListener("click", function(ev){
   if(action==="nuevo-ajuste"){ abrirFormAjuste(); return; }
   if(action==="nuevo-merma"){ abrirFormMerma(); return; }
   if(action==="vivo-demo"){ vivoDemo(); return; }
+  if(action==="vivo-zona"){ vivoZona(val); return; }
+  if(action==="vivo-zona-cerrar"){ vivoZonaCerrar(); return; }
   if(action==="vivo-pantalla"){ var vc = document.querySelector(".vivo-card"); if(!vc) return; if(document.fullscreenElement){ document.exitFullscreen(); } else if(vc.requestFullscreen){ vc.requestFullscreen().then(function(){ setTimeout(vivoLayout, 300); }).catch(function(){}); } return; }
   if(action==="guardar-merma"){ guardarMerma(); return; }
   if(action==="quitar-mov"){ var mv = S.egresos[id]; if(mv && confirm("¿Quitar este movimiento del Kardex ("+(mv.tipo==="merma"?"merma":"ajuste")+" de "+kgTxt(mv.kardex?mv.kardex.kg:0)+")?")){ eliminarGasto(id, true, true); } return; }
@@ -2168,10 +2390,19 @@ document.addEventListener("click", function(ev){
   if(action==="importar-archivo"){ abrirImportar(); return; }
   if(action==="imp-importar"){ importarGuardar(); return; }
   if(action==="rec-registrar"){ registrarRecurrente(id); render(); return; }
-  if(action==="rec-registrar-todos"){ recurrentesPendientes().filter(function(x){ return !x.hecho; }).forEach(function(x){ registrarRecurrente(x.rc.id); }); render(); return; }
-  if(action==="rec-agregar"){ var rd = document.getElementById("rec-desc").value.trim(), rm = r2(document.getElementById("rec-monto").value), rdia = Math.max(1, Math.min(31, Number(document.getElementById("rec-dia").value)||1)); if(!rd || !(rm > 0)){ toast("Escriba la descripción y el monto"); return; } var lista = (S.config.recurrentes||[]).slice(); lista.push({ id:genId("rc"), descripcion:rd, categoria:document.getElementById("rec-cat").value, monto:rm, dia:rdia, metodo:document.getElementById("rec-metodo").value }); S.config.recurrentes = lista; S.db.doc("control/config").set({ recurrentes:lista, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Gasto fijo agregado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); return; }
+  if(action==="rec-registrar-todos"){ recurrentesPendientes().filter(function(x){ return !x.hecho && !x.completo; }).forEach(function(x){ registrarRecurrente(x.rc.id); }); render(); return; }
+  if(action==="rec-agregar"){ var rd = document.getElementById("rec-desc").value.trim(), rm = r2(document.getElementById("rec-monto").value), rdia = Math.max(1, Math.min(31, Number(document.getElementById("rec-dia").value)||1)); if(!rd || !(rm > 0)){ toast("Escriba la descripción y el monto"); return; } var lista = (S.config.recurrentes||[]).slice(); var rcu = Math.max(0, Math.round(num((document.getElementById("rec-cuotas")||{}).value))); lista.push({ id:genId("rc"), descripcion:rd, categoria:document.getElementById("rec-cat").value, monto:rm, dia:rdia, metodo:document.getElementById("rec-metodo").value, cuotas:rcu || null }); S.config.recurrentes = lista; S.db.doc("control/config").set({ recurrentes:lista, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Gasto fijo agregado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); return; }
   if(action==="rec-quitar"){ if(!confirm("¿Quitar este gasto fijo? Los gastos ya registrados no se borran.")) return; var l2 = (S.config.recurrentes||[]).filter(function(x){ return x.id!==id; }); S.config.recurrentes = l2; S.db.doc("control/config").set({ recurrentes:l2, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){}); render(); return; }
-  if(action==="guardar-alertas"){ guardarConfig("alertas", { cajaDif:r2(document.getElementById("al-caja").value), deudaCliente:r2(document.getElementById("al-deuda").value), stockMin:r2(document.getElementById("al-stock").value) }); return; }
+  if(action==="nueva-tina"){ abrirFormTina(val||"salida", t.getAttribute("data-cliente")||""); return; }
+  if(action==="tina-tipo"){ document.querySelectorAll("#t-tipo .pay-opt").forEach(function(b){ b.classList.toggle("on", b===t); }); return; }
+  if(action==="guardar-tina"){ guardarTina(); return; }
+  if(action==="eliminar-tina"){ eliminarTina(id); return; }
+  if(action==="guardar-tinas-config"){ guardarConfig("tinas", { total:Math.max(0, Math.round(num(document.getElementById("tinas-total").value))) }); return; }
+  if(action==="may-agregar"){ var mc = document.getElementById("may-cliente").value.trim(), mt = r2(document.getElementById("may-tope").value); if(!mc || !(mt > 0)){ toast("Escriba el cliente y el tope"); return; } var ml = (S.config.mayoristas||[]).filter(function(x){ return normalizar(x.cliente)!==normalizar(mc); }); ml.push({ id:genId("my"), cliente:mc.toUpperCase(), tope:mt }); guardarListaConfig("mayoristas", ml, "Mayorista guardado"); return; }
+  if(action==="may-quitar"){ guardarListaConfig("mayoristas", (S.config.mayoristas||[]).filter(function(x){ return x.id!==id; }), "Mayorista quitado"); return; }
+  if(action==="trab-agregar"){ var tn = document.getElementById("trab-nombre").value.trim(), ts = r2(document.getElementById("trab-sueldo").value), td = Math.max(1, Math.min(31, Number(document.getElementById("trab-dia").value)||30)); if(!tn || !(ts > 0)){ toast("Escriba el nombre y el sueldo"); return; } var tl = (S.config.trabajadores||[]).filter(function(x){ return normalizar(x.nombre)!==normalizar(tn); }); tl.push({ id:genId("tr"), nombre:tn.toUpperCase(), sueldo:ts, dia:td, metodo:document.getElementById("trab-metodo").value }); guardarListaConfig("trabajadores", tl, "Trabajador guardado"); return; }
+  if(action==="trab-quitar"){ if(!confirm("¿Quitar este trabajador de la planilla? Los sueldos ya registrados no se borran.")) return; guardarListaConfig("trabajadores", (S.config.trabajadores||[]).filter(function(x){ return x.id!==id; }), "Trabajador quitado"); return; }
+  if(action==="guardar-alertas"){ guardarConfig("alertas", { cajaDif:r2(document.getElementById("al-caja").value), deudaCliente:r2(document.getElementById("al-deuda").value), stockMin:r2(document.getElementById("al-stock").value), tinasDias:Math.max(0, Math.round(num(document.getElementById("al-tinas").value))) }); return; }
   if(action==="instalar-app"){ if(window.__instalar){ window.__instalar.prompt(); window.__instalar.userChoice.then(function(){ window.__instalar = null; render(); }).catch(function(){}); } return; }
   if(action==="vivo-sonido"){ VIVO.sonido = !VIVO.sonido; lsSet("sonido", VIVO.sonido); if(VIVO.sonido){ vivoAudio(); sonar(); } t.textContent = VIVO.sonido ? "🔊 Sonido: sí" : "🔇 Sonido: no"; return; }
   if(action==="cat-agregar"){ var nv = document.getElementById("cat-nueva").value.trim(); if(!nv) return; if(S.categorias.some(function(c){ return normalizar(c)===normalizar(nv); })){ toast("Esa categoría ya existe"); return; } S.categorias.push(nv); guardarCategorias(); return; }
