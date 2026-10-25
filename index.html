@@ -344,7 +344,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C39";
+var APP_VERSION = "25 oct · C40";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -768,7 +768,7 @@ function rankingHtml(r, ing){
 function renderTablero(){
   var r = periodo(), R = calcResumen(r), ing = R.ing, eg = R.eg;
   var rp = periodoAnterior(r), RP = calcResumen(rp);
-  var cargando = aniosDe(r).concat(aniosDe(rp)).some(function(a){ return S.aniosCargados[a]==="cargando"; });
+  var cargando = !S.recientesListo || aniosDe(r).concat(aniosDe(rp)).some(function(a){ return S.aniosCargados[a]==="cargando"; });
   var utilNeg = R.utilidad < -0.009;
   var mer = mermasDe(calcKardex(r));
   var cats = Object.keys(eg.porCat).map(function(c){ return { cat:c, monto:eg.porCat[c] }; }).sort(function(a,b){ return b.monto-a.monto; });
@@ -1436,7 +1436,7 @@ function ventasDelDia(fecha, vendedor){
   return Object.keys(S.ventas).map(function(id){ return S.ventas[id]; }).filter(function(v){ return !v.eliminado && String(v.fecha||"").slice(0,10)===fecha && (!vendedor || normalizar(v.vendedor||"")===normalizar(vendedor)); }).sort(function(a,b){ return num(a.creadoEn)-num(b.creadoEn); });
 }
 function renderRecorridos(){
-  var fecha = UI.recFecha || todayISO(), vendedor = UI.recVend || "", anio = Number(fecha.slice(0,4)); cargarAnio(anio, false);
+  var fecha = UI.recFecha || todayISO(), vendedor = UI.recVend || "", anio = Number(fecha.slice(0,4)); if(!S.ventanaDesde || fecha < S.ventanaDesde) cargarAnio(anio, false);
   var todas = ventasDelDia(fecha, ""), vends = []; todas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; if(vends.indexOf(k) < 0) vends.push(k); }); vends.sort();
   var lista = ventasDelDia(fecha, vendedor), con = lista.filter(function(v){ return v.ubicacion && num(v.ubicacion.lat); }), total = lista.reduce(function(s,v){ return s+num(v.total); }, 0);
   var ayer = isoAdd(fecha, -1), man = isoAdd(fecha, 1);
@@ -1449,7 +1449,7 @@ function renderRecorridos(){
     + '<div class="card"><h2>Paradas <span class="kard-sub">hora · cliente · monto · dirección</span></h2>'+(lista.length ? paradasHtml(lista) : '<p class="empty">No hay notas ese día'+(vendedor ? ' de '+escapeHtml(vendedor) : '')+'. Pruebe otro día o "Todos".</p>')+'</div></div>';
 }
 function abrirRecorridos(fecha, vendedor){
-  fecha = fecha || todayISO(); vendedor = vendedor || ""; UI.recFecha = fecha; UI.recVend = vendedor; var anio = Number(fecha.slice(0,4)); cargarAnio(anio, false);
+  fecha = fecha || todayISO(); vendedor = vendedor || ""; UI.recFecha = fecha; UI.recVend = vendedor; var anio = Number(fecha.slice(0,4)); if(!S.ventanaDesde || fecha < S.ventanaDesde) cargarAnio(anio, false);
   var todas = ventasDelDia(fecha, ""), vends = []; todas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; if(vends.indexOf(k) < 0) vends.push(k); }); vends.sort();
   var lista = ventasDelDia(fecha, vendedor);
   var controles = '<div class="per-bar" style="margin:0 0 10px;"><label class="sel-wrap"><span>Día</span><input type="date" id="rec-fecha" value="'+fecha+'" max="'+todayISO()+'"></label><label class="sel-wrap"><span>Vendedor</span><select id="rec-vend"><option value="">Todos ('+todas.length+')</option>'+vends.map(function(k){ return '<option value="'+escapeHtml(k)+'"'+(normalizar(k)===normalizar(vendedor)?' selected':'')+'>'+escapeHtml(k)+' ('+todas.filter(function(v){ return (v.vendedor||"(sin vendedor)")===k; }).length+')</option>'; }).join("")+'</select></label>'+(S.aniosCargados[anio]==="cargando" ? '<span class="kard-sub">cargando las notas de '+anio+'… vuelva a elegir el día en unos segundos</span>' : '')+'</div>';
@@ -1893,7 +1893,7 @@ function reabrirDia(){ VIVO.cerradoDia = null; lsSet("cierreAnim", ""); FIESTA.b
 setInterval(function(){ var d = new Date(); if(!S.user || UI.vista !== "envivo" || d.getHours() !== 20 || d.getMinutes() > 2) return; if(lsGet("cierreAnim", "") === todayISO()) return; cerrarDia(true); }, 60000);
 // ---------- 1. Repetir un dia (rebobinar): las notas de ese dia entran en orden, con el reloj acelerado ----------
 function replayIniciar(fecha, segundos){
-  var anioR = Number(fecha.slice(0,4)); if(S.aniosCargados[anioR] !== true){ cargarAnio(anioR, false); toast("Cargando las notas de "+anioR+"… vuelva a intentarlo en unos segundos"); return; }
+  var anioR = Number(fecha.slice(0,4)); if((!S.ventanaDesde || fecha < S.ventanaDesde) && S.aniosCargados[anioR] !== true){ cargarAnio(anioR, false); toast("Cargando las notas de "+anioR+"… vuelva a intentarlo en unos segundos"); return; }
   var lista = ventasDelDia(fecha, "").filter(function(v){ return num(v.creadoEn) > 0; }); if(!lista.length){ toast("Ese día no tiene notas con hora"); return; }
   var t0 = new Date(num(lista[0].creadoEn)), ini = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate(), Math.min(7, t0.getHours()), 0, 0).getTime();
   var fin = Math.max(num(lista[lista.length-1].creadoEn) + 15*60000, ini + 60*60000);
@@ -2805,7 +2805,7 @@ function alEntrar(u){
 }
 function conectarDatos(){
   var db = S.db;
-  S.unsubs.push(db.collection("egresos").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.egresos[ch.doc.id]; else S.egresos[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("egresos", e); toast("No se pudieron leer los gastos"); }));
+  S.unsubs.push(db.collection("egresos").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.egresos[ch.doc.id]; else S.egresos[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("egresos", e); avisarCuota(e); toast("No se pudieron leer los gastos"); }));
   S.unsubs.push(db.collection("tinas").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.tinas[ch.doc.id]; else S.tinas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("tinas", e); }));
   S.unsubs.push(db.doc("control/config").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null;
     if(d && Array.isArray(d.categorias) && d.categorias.length){ S.categorias = d.categorias.map(String);
@@ -2823,10 +2823,18 @@ function conectarDatos(){
   S.unsubs.push(db.collection("cierres").onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.cierres[ch.doc.id]; else S.cierres[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(UI.vista==="caja" && !document.querySelector(".overlay")) render(); }, function(){}));
   db.collection("productos").get().then(function(snap){ S.productos = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id:d.id }); }); }).catch(function(){});
   db.collection("usuarios").get().then(function(snap){ S.usuarios = snap.docs.map(function(d){ return Object.assign({}, d.data(), { id:d.id }); }); if(UI.vista==="envivo") vivoRefrescar(); }).catch(function(){});
-  cargarAnio(hp.anio, true);
+  cargarRecientes();
   // Deudas de cualquier año: los cobros de deudas se cuentan por fecha de cobro, aunque la nota sea de otro año.
-  S.unsubs.push(db.collection("ventas").where("pagado","==",false).onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed"){ db.doc("ventas/"+ch.doc.id).get().then(function(d){ if(d.exists) S.ventas[d.id] = Object.assign({}, d.data(), { id:d.id }); else delete S.ventas[ch.doc.id]; if(!document.querySelector(".overlay")) render(); }).catch(function(){}); } else S.ventas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("deudas", e); }));
+  S.unsubs.push(db.collection("ventas").where("pagado","==",false).onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed"){ db.doc("ventas/"+ch.doc.id).get().then(function(d){ if(d.exists) S.ventas[d.id] = Object.assign({}, d.data(), { id:d.id }); else delete S.ventas[ch.doc.id]; if(!document.querySelector(".overlay")) render(); }).catch(function(){}); } else S.ventas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("deudas", e); avisarCuota(e); }));
 }
+var VENTANA_DIAS = 70;
+function cargarRecientes(){
+  // Lee solo las notas de los ultimos 70 dias (en vivo). Con la cache local, en las siguientes visitas solo bajan los cambios.
+  S.ventanaDesde = isoAdd(todayISO(), -VENTANA_DIAS);
+  S.unsubs.push(S.db.collection("ventas").where("fecha", ">=", S.ventanaDesde).onSnapshot(function(snap){ snap.docChanges().forEach(function(ch){ if(ch.type==="removed") delete S.ventas[ch.doc.id]; else S.ventas[ch.doc.id] = Object.assign({}, ch.doc.data(), { id:ch.doc.id }); }); S.recientesListo = true; if(!document.querySelector(".overlay")) render(); }, function(e){ console.error("ventas", e); avisarCuota(e); toast("No se pudieron leer las notas de la app"); }));
+}
+function avisarCuota(e){ var c = e && (e.code || (e.message||"")); if(/resource-exhausted|exhausted|quota/i.test(String(c)) && !S.cuotaAvisada){ S.cuotaAvisada = true; toast("La base de datos llegó a su cupo diario de lecturas; se renueva a las 2 am. Mientras tanto puede faltar información."); } }
+function necesitaAnio(anio){ return S.ventanaDesde ? (String(anio) < S.ventanaDesde.slice(0,4) || (String(anio) === S.ventanaDesde.slice(0,4) && true)) : true; }
 function cargarAnio(anio, enVivo){
   anio = Number(anio); if(!anio || S.aniosCargados[anio]) return;
   S.aniosCargados[anio] = "cargando";
@@ -2837,7 +2845,7 @@ function cargarAnio(anio, enVivo){
     q.get().then(function(snap){ snap.docs.forEach(function(d){ S.ventas[d.id] = Object.assign({}, d.data(), { id:d.id }); }); S.aniosCargados[anio] = true; if(!document.querySelector(".overlay")) render(); }).catch(function(){ S.aniosCargados[anio] = false; });
   }
 }
-function asegurarAnios(){ var r = periodo(), rp = periodoAnterior(r); aniosDe(r).concat(aniosDe(rp)).forEach(function(a){ if(a >= 2020 && a <= hp.anio+1) cargarAnio(a, false); }); }
+function asegurarAnios(){ var r = periodo(), rp = periodoAnterior(r); var desde = rp.desde < r.desde ? rp.desde : r.desde; if(S.ventanaDesde && desde >= S.ventanaDesde) return; aniosDe(r).concat(aniosDe(rp)).forEach(function(a){ if(a >= 2020 && a <= hp.anio+1) cargarAnio(a, false); }); }
 
 // ---------- eventos ----------
 function closeOverlay(){ if(RECORRIDO.tl){ RECORRIDO.tl.kill(); RECORRIDO.tl = null; } if(RECORRIDO.mapa){ try{ RECORRIDO.mapa.remove(); }catch(e){} RECORRIDO.mapa = null; } document.getElementById("overlay-root").innerHTML = ""; }
@@ -2879,7 +2887,7 @@ document.addEventListener("click", function(ev){
   if(action==="nuevo-merma"){ abrirFormMerma(); return; }
   if(action==="vivo-demo"){ vivoDemo(); return; }
   if(action==="vivo-replay"){ if(VIVO.replay) replayParar(); else abrirReplay(); return; }
-  if(action==="rp-iniciar"){ var rf = document.getElementById("rp-fecha").value, rd = Number(document.getElementById("rp-dur").value)||60; closeOverlay(); if(rf){ cargarAnio(Number(rf.slice(0,4)), false); replayIniciar(rf, rd); } return; }
+  if(action==="rp-iniciar"){ var rf = document.getElementById("rp-fecha").value, rd = Number(document.getElementById("rp-dur").value)||60; closeOverlay(); if(rf){ if(!S.ventanaDesde || rf < S.ventanaDesde) cargarAnio(Number(rf.slice(0,4)), false); replayIniciar(rf, rd); } return; }
   if(action==="rp-parar"){ replayParar(); return; }
   if(action==="vivo-zona"){ vivoZona(val); return; }
   if(action==="vivo-zona-cerrar"){ vivoZonaCerrar(); return; }
@@ -2970,6 +2978,7 @@ function iniciar(){
   if(!window.firebase || !window.RUTIPOLLO_FIREBASE_CONFIG){ document.getElementById("app").innerHTML = '<div class="gate"><h1>'+CFG.titulo+'</h1><div class="note danger">No se pudo cargar la conexión. Revisa tu internet y vuelve a abrir la página.</div></div>'; return; }
   if(!firebase.apps.length) firebase.initializeApp(window.RUTIPOLLO_FIREBASE_CONFIG);
   S.db = firebase.firestore();
+  try{ S.db.enablePersistence({ synchronizeTabs:true }).catch(function(e){ console.warn("sin caché local", e && e.code); }); }catch(e){}
   UI.gateMode = "cargando"; renderGate();
   S.db.doc("publico/nombres").onSnapshot(function(snap){ var d = snap.exists ? snap.data() : null; S.nombres = (d && Array.isArray(d.nombres)) ? d.nombres : []; if(!S.user && UI.gateMode==="login") renderGate(); }, function(){});
   S.db.doc("servicio/estado").onSnapshot(function(snap){ S.servicio = snap.exists ? (snap.data()||{}) : {}; if(!S.user) renderGate(); else render(); }, function(){});
