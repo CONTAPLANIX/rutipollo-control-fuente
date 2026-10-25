@@ -88,6 +88,13 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
 - C34 (25-oct-2026): "Recorridos" es pestaña propia del menú (`renderRecorridos`, en celular "Rutas"): día anterior/siguiente/hoy,
   vendedor, paradas con dirección y mapa (`montarRecorridoMapa`, se monta desde `render()`); se quitó el botón del Tablero.
 - C35 (25-oct-2026): la persiana queda oculta (dentro de un cajón sobre la puerta) mientras el local está abierto; solo se ve al bajar.
+- C36 (25-oct-2026): 10 mejoras de En vivo: repetir un día (`replayIniciar/replayPaso/replayParar`, `VIVO.replay`, barra `#replay-barra`;
+  se cancela al remontar la vista), mini mapa en la tarjeta del camión (`montarMiniRuta`, `MINI`), avisos dentro de la escena
+  (`VIVO.zonaAvisoTxt`, sprites `q.aviso`), meta del día en la pared izquierda (`vivo3dMeta`), clientes frecuentes con nombre y color
+  (`clientesFrecuentes`), horas pico (`horasPicoHtml`, `#vivo-horas`), clima real (Open-Meteo, `CLIMA`, `climaFactor`, lluvia `vivo3dLluvia`;
+  coordenadas de `control/config.local{lat,lon}` o promedio de notas con GPS), modo TV rotativo (`TV_ROTA`), murmullo de ambiente y motor
+  del camión (`ambienteSonoro`, `sonar("camion")`, volumen `VIVO.volumen`/`#vivo-vol`, `asegurarMaster`), puerta de vidrio de dos hojas
+  (`vivo3dPuerta`) y ventanas con transmission. Revisión: 2 fallas corregidas (murmullo al salir de la vista, replay tras remontar).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
