@@ -336,7 +336,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C36";
+var APP_VERSION = "25 oct · C37";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1477,18 +1477,51 @@ var MASCOTAS = [
   { nombre:"Ramón", tipo:"perro", x:3.0, y:6.8, esc:0.9, color:"#3a2e26", orejas:"#2a211b", hocico:"#5a4a3e", voz:"¡guau guau!", social:0.6, ruta:[], espera:3, paso:0, cola:0, mirando:1, sentado:false, dirx:1, diry:0, alt:0, altObj:0, m3:null, habla:0 },
   { nombre:"Duko", tipo:"gato", x:9.5, y:3.0, esc:0.95, color:"#f4efe6", manchas:["#d98a3a","#4a3b31"], ojos:"#9ccb62", voz:"miau", social:0.2, ruta:[], espera:4, paso:0, cola:0, mirando:1, sentado:true, dirx:1, diry:0, alt:0, altObj:0, m3:null, habla:0 }
 ];
-var SITIOS_PERRO = [[2.4,6.6],[7.6,6.6],[9.5,3.2],[5.4,6.9],[8.6,2.2],[3.4,3.6],[10.2,6.2],[6.5,3.0]];
-var SITIOS_GATO = [[5.9,4.1,0.8],[0.7,6.6,1.35],[9.6,2.6,0],[10.6,6.4,0],[2.6,6.3,0],[7.4,0.9,0]];
+var SITIOS_PERRO = [[2.4,6.6],[7.6,6.6],[9.5,3.3],[5.4,6.9],[8.8,3.3],[3.4,3.4],[10.2,6.2],[6.5,3.3]];
+var SITIOS_GATO = [[5.9,4.1,0.8],[0.7,6.6,1.35],[9.6,3.3,0],[10.6,6.4,0],[2.6,6.3,0],[7.4,0.9,0.55]];
+// Zonas libres del local (rectangulos sin muebles): frente del mostrador, lado derecho y pasillo de atras. Se conectan por sus solapes.
+var ZONAS_MASC = [
+  { nombre:"frente", x0:1.4, x1:11.6, y0:5.3, y1:7.6 },
+  { nombre:"derecha", x0:7.3, x1:11.6, y0:3.0, y1:7.6 },
+  { nombre:"atras", x0:1.0, x1:11.6, y0:3.0, y1:3.7 }
+];
+// Sitios "encima" de algo: a que punto libre hay que llegar antes de subir.
+var SUBIDAS = [{ x:5.9, y:4.1, desde:[5.9, 5.4] }, { x:0.7, y:6.6, desde:[1.5, 6.6] }, { x:7.4, y:0.9, desde:[7.4, 3.2] }];
+function enZona(z, x, y){ return x >= z.x0 - 0.05 && x <= z.x1 + 0.05 && y >= z.y0 - 0.05 && y <= z.y1 + 0.05; }
+function zonaDe(x, y){ for(var i=0;i<ZONAS_MASC.length;i++){ if(enZona(ZONAS_MASC[i], x, y)) return i; } return -1; }
+function clampZona(z, x, y){ return { x:Math.max(z.x0, Math.min(z.x1, x)), y:Math.max(z.y0, Math.min(z.y1, y)) }; }
+function puntoLibreCercano(x, y){ var mejor = null, md = 1e9; ZONAS_MASC.forEach(function(z){ var c = clampZona(z, x, y); var d = (c.x-x)*(c.x-x)+(c.y-y)*(c.y-y); if(d < md){ md = d; mejor = c; } }); return mejor; }
+function solape(a, b){ var z = { x0:Math.max(a.x0,b.x0), x1:Math.min(a.x1,b.x1), y0:Math.max(a.y0,b.y0), y1:Math.min(a.y1,b.y1) }; return (z.x0 <= z.x1 && z.y0 <= z.y1) ? z : null; }
+function rutaMascota(m, dest){
+  // Devuelve los puntos por los que pasar para llegar sin atravesar muebles.
+  var ruta = [], sub = SUBIDAS.find(function(q){ return Math.abs(q.x - dest.x) < 0.05 && Math.abs(q.y - dest.y) < 0.05; });
+  var fin = sub ? { x:sub.desde[0], y:sub.desde[1] } : dest;
+  var ini = { x:m.x, y:m.y }; var zi = zonaDe(ini.x, ini.y), zf = zonaDe(fin.x, fin.y);
+  if(zi < 0){ var baj = SUBIDAS.find(function(q){ return Math.abs(q.x - m.x) < 0.05 && Math.abs(q.y - m.y) < 0.05; }); var pl = baj ? { x:baj.desde[0], y:baj.desde[1] } : puntoLibreCercano(m.x, m.y); ruta.push({ x:pl.x, y:pl.y, alt:0 }); ini = pl; zi = zonaDe(pl.x, pl.y); }
+  if(zf < 0){ var pf = puntoLibreCercano(fin.x, fin.y); fin = pf; zf = zonaDe(pf.x, pf.y); }
+  if(zi >= 0 && zf >= 0 && zi !== zf){
+    var A = ZONAS_MASC[zi], B = ZONAS_MASC[zf], so = solape(A, B);
+    if(so){ var c = clampZona(so, (ini.x+fin.x)/2, (ini.y+fin.y)/2); ruta.push({ x:c.x, y:c.y, alt:0 }); }
+    else { var via = ZONAS_MASC.find(function(z, i){ return i !== zi && i !== zf && solape(z, A) && solape(z, B); }); if(via){ var s1 = solape(A, via), s2 = solape(via, B); var c1 = clampZona(s1, ini.x, ini.y), c2 = clampZona(s2, fin.x, fin.y); ruta.push({ x:c1.x, y:c1.y, alt:0 }); ruta.push({ x:c2.x, y:c2.y, alt:0 }); } }
+  }
+  ruta.push({ x:fin.x, y:fin.y, alt:0 }); if(sub) ruta.push({ x:dest.x, y:dest.y, alt:dest.alt||0 });
+  return ruta;
+}
 function moverMascota(m, dt){
   m.cola += dt*(m.tipo==="gato" ? 3 : 10); if(m.habla > 0) m.habla -= dt; m.alt += (m.altObj - m.alt)*Math.min(1, dt*6);
   if(m.espera > 0){ m.espera -= dt; if(m.espera <= 0){ m.sentado = false; var cli = VIVO.personas.filter(function(p){ return p.viva && !p.rutero && (VIVO.cajeros||[]).indexOf(p) < 0 && p.y < 8; }); var dest;
       if(m.tipo==="gato"){ var sp = SITIOS_GATO[Math.floor(Math.random()*SITIOS_GATO.length)]; dest = { x:sp[0], y:sp[1], alt:sp[2] }; if(cli.length && Math.random() < 0.5) m.habla = 1.5; }
-      else if(cli.length && Math.random() < m.social){ var c = cli[0]; dest = { x:Math.max(1.2, Math.min(10.5, c.x + (Math.random() < 0.5 ? -0.9 : 0.9))), y:Math.max(1.5, Math.min(7.2, c.y + 0.5)), alt:0 }; m.habla = 1.6; }
+      else if(cli.length && Math.random() < m.social){ var c = cli[0]; var pl0 = puntoLibreCercano(c.x + (Math.random() < 0.5 ? -0.9 : 0.9), c.y + 0.5); dest = { x:pl0.x, y:pl0.y, alt:0 }; m.habla = 1.6; }
+      else if(Math.random() < 0.55){ var zz = ZONAS_MASC[Math.floor(Math.random()*ZONAS_MASC.length)]; dest = { x:zz.x0 + 0.3 + Math.random()*(zz.x1 - zz.x0 - 0.6), y:zz.y0 + 0.2 + Math.random()*(zz.y1 - zz.y0 - 0.4), alt:0 }; }
       else { var sq = SITIOS_PERRO[Math.floor(Math.random()*SITIOS_PERRO.length)]; dest = { x:sq[0], y:sq[1], alt:0 }; }
-      m.altObj = 0; m.ruta = [dest]; } return; }
+      m.altObj = 0; m.ruta = rutaMascota(m, dest); m.vel = (m.tipo==="gato" ? 1.1 : 0.9) + Math.random()*0.9; m.olfateo = 1.5 + Math.random()*4; m.curva = (Math.random() - 0.5)*0.9; } return; }
   if(!m.ruta.length){ m.espera = (m.tipo==="gato" ? 4 : 1.5) + Math.random()*5; m.sentado = Math.random() < (m.tipo==="gato" ? 0.75 : 0.45); return; }
   var t = m.ruta[0], dx = t.x-m.x, dy = t.y-m.y, d = Math.sqrt(dx*dx+dy*dy); if(d < 0.05){ m.x = t.x; m.y = t.y; m.altObj = t.alt||0; m.ruta.shift(); return; }
-  var paso = Math.min(d, (m.tipo==="gato" ? 1.6 : 1.4)*dt); m.x += dx/d*paso; m.y += dy/d*paso; m.paso += paso*12; m.mirando = (dx - dy) >= 0 ? 1 : -1; m.dirx = dx; m.diry = dy;
+  // de vez en cuando se detiene a olfatear en medio del camino
+  if(m.olfateo !== undefined){ m.olfateo -= dt; if(m.olfateo <= 0 && d > 0.8 && Math.random() < 0.6){ m.olfateo = 2 + Math.random()*4; m.espera = 0.6 + Math.random()*1.2; m.sentado = false; return; } if(m.olfateo <= 0) m.olfateo = 2 + Math.random()*4; }
+  var curv = (m.curva||0) * Math.sin(Math.min(1, d/3)*Math.PI) * (t.alt ? 0 : 1); var ux = dx/d, uy = dy/d, nx = -uy*curv, ny = ux*curv; var vx = ux + nx, vy = uy + ny, vl = Math.sqrt(vx*vx+vy*vy)||1; vx /= vl; vy /= vl;
+  var paso = Math.min(d, (m.vel || (m.tipo==="gato" ? 1.6 : 1.4))*(t.alt ? 1.8 : 1)*dt); m.x += vx*paso; m.y += vy*paso; m.paso += paso*12; m.mirando = (vx - vy) >= 0 ? 1 : -1;
+  var angObj = Math.atan2(vx, vy), angAct = (m.ang === undefined) ? angObj : m.ang, dif = Math.atan2(Math.sin(angObj-angAct), Math.cos(angObj-angAct)); m.ang = angAct + dif*Math.min(1, dt*6); m.dirx = Math.sin(m.ang); m.diry = Math.cos(m.ang);
 }
 function moverMascotas(dt){ MASCOTAS.forEach(function(m){ moverMascota(m, dt); }); }
 function dibujarMascota(ctx, m){
