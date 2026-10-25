@@ -82,6 +82,9 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   en vez del dibujo 2D (el bucle no dibuja 2D en modo 3d). Camiones estacionados a los lados (`px` 1.6 y 9.6) para dejar libre la puerta
   (x 4.75); el camión del proveedor se detiene en x 6.5; vendedor de ruta en la vereda junto a la cabina (`px+2.3, z 8.45`) y el cliente de
   ruta llega por la vereda (z 8.3) desde la derecha. Las zonas `camion1/camion2` siguen a esas posiciones.
+- C33 (25-oct-2026): "Recorridos por día" (botón en el mapa del Tablero, en la tarjeta del camión y en el modal del recorrido de hoy):
+  `abrirRecorridos(fecha, vendedor)` → `ventasDelDia` + `pintarRecorrido` (controles `rec-fecha`/`rec-vend`, paradas con dirección, mapa).
+  Los días pasados se ven por vendedor (no por camión, porque la asignación de camión solo se guarda del día). Carga el año con `cargarAnio`.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
