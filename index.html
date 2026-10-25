@@ -325,7 +325,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C28";
+var APP_VERSION = "25 oct · C29";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1246,7 +1246,8 @@ var ZONAS = [
   { id:"camara", nombre:"Cámara", ico:"frio", box:[2.0,1.1,1.5, 3.7,2.3,2.7], foco:[2.4,0.8,1.8], dist:9.5 },
   { id:"vitrina", nombre:"Vitrina", ico:"vitrina", box:[0.7,0.7,5.6, 1.1,1.5,4.4], foco:[1.0,0.6,5.6], dist:8.5 },
   { id:"almacen", nombre:"Almacén", ico:"almacen", box:[10.6,0.95,1.9, 2.4,1.9,1.5], foco:[10.6,0.8,1.9], dist:7.5 },
-  { id:"camion", nombre:"Camiones", ico:"camion", box:[7.8,0.75,9.45, 8.2,1.6,1.5], foco:[7.8,0.5,9.4], dist:12.5 },
+  { id:"camion1", nombre:"Camión 1", ico:"camion", box:[5.2,0.75,9.45, 3.4,1.7,1.6], foco:[5.2,0.5,9.4], dist:8.5, camion:0 },
+  { id:"camion2", nombre:"Camión 2", ico:"camion", box:[10.4,0.75,9.45, 3.4,1.7,1.6], foco:[10.4,0.5,9.4], dist:8.5, camion:1 },
   { id:"marcador", nombre:"Ranking", ico:"trofeo", box:[9.6,1.95,0.12, 3.5,1.5,0.3], foco:[9.6,1.6,0.6], dist:7 }
 ];
 function vivo3dZonasCrear(sc, gl){
@@ -1275,7 +1276,7 @@ function vivoZonaCerrar(){ VIVO.zonaActiva = null; T3.foco = null; vivoZonaPinta
 function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
 function vivoZonasBarHtml(){ return '<div class="vivo-zonas">'+ZONAS.map(function(z){ return '<button data-action="vivo-zona" data-val="'+z.id+'" class="'+(VIVO.zonaActiva===z.id?'on':'')+'" title="Ver '+z.nombre+'"><span class="ic">'+ico(z.ico)+'</span><span>'+z.nombre+'</span></button>'; }).join("")+'</div>'; }
 function vivoZonasAlertas(){
-  var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion = true; });
+  var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion1 = true; });
   if(stockAlmacen().some(function(p){ return S.config.alertas.stockMin > 0 && p.final < S.config.alertas.stockMin; })) z.almacen = true; VIVO.zonaAlerta = z;
 }
 function zonaInfoHtml(id){
@@ -1286,8 +1287,11 @@ function zonaInfoHtml(id){
     body = kx.length ? '<ul class="ledger">'+kx.slice(0,6).map(function(p){ return li(escapeHtml(p.nombre.toLowerCase()), kgTxt(p.final)+" "+escapeHtml(p.unidad), (minS > 0 && p.final < minS) ? "⚠ poco stock" : ""); }).join("")+(mer ? li("Mermas de hoy", "−"+kgTxt(mer)+" kg") : "")+'</ul><div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="vista" data-val="kardex">Ver Kardex</button></div>' : '<p class="kard-sub">Sin stock registrado. Registre las compras con producto y kilos en Gastos y aquí verá cuánto queda.</p>'; }
   else if(id==="vitrina"){ var pl = VIVO.productosHoy||[]; body = pl.length ? '<ul class="ledger">'+pl.map(function(p){ return li(escapeHtml(p.corto.toLowerCase()), p.kg > 0 ? kgTxt(p.kg)+(p.unidad==="kg" ? " kg hoy" : " hoy") : "sin ventas hoy"); }).join("")+'</ul>' : '<p class="kard-sub">Todavía no hay productos vendidos hoy. Apenas salga una nota, aparecen aquí con sus kilos.</p>'; }
   else if(id==="almacen"){ var al = stockAlmacen(); body = al.length ? '<ul class="ledger">'+al.map(function(p){ return li(escapeHtml(p.nombre.toLowerCase()), kgTxt(p.final)+" "+escapeHtml(p.unidad), "vendido hoy "+kgTxt(p.salidas)); }).join("")+'</ul>' : '<p class="kard-sub">Aquí van los embutidos y cremas. Registre su compra en Gastos marcando "entra al Kardex" (por ejemplo HOT DOG, CHORIZO, MAYONESA) y aparecerán con su stock.</p>'; }
-  else if(id==="camion"){ var tn = calcTinas({ desde:f, hasta:f }); var enRuta = ing.lista.filter(esVentaEnRuta); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
-    body = '<ul class="ledger">'+VIVO.motos.map(function(m){ return li(escapeHtml(m.nombre), m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy"); }).join("")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s"))+li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna")+'</ul><div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button><button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
+  else if(id==="camion1" || id==="camion2"){ var m = VIVO.motos[z.camion] || {}; var tn = calcTinas({ desde:f, hasta:f });
+    var chof = String(m.chofer||"").split(" + ").map(normalizar).filter(Boolean); var enRuta = ing.lista.filter(function(v){ return esVentaEnRuta(v) && chof.indexOf(normalizar(v.vendedor||"")) >= 0; }); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
+    var otro = VIVO.motos[z.camion ? 0 : 1];
+    body = '<ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;">'+enRuta.slice(-4).reverse().map(function(v){ return '<div class="kard-sub">'+horaDisplay(v.creadoEn)+' · '+escapeHtml(v.cliente||"")+' · '+fmt(v.total)+'</div>'; }).join("")+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
+      + '<div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
   else if(id==="marcador"){ body = podioHtml(VIVO.marcador||[]); }
   return '<div class="zc-head"><span class="ic">'+ico(z.ico)+'</span><strong>'+z.nombre+'</strong><span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="vivo-zona-cerrar" title="Cerrar">✕</button></div>'+body;
 }
@@ -2161,7 +2165,7 @@ function conteoUsar(){ var c = conteoLeer(); UI.cajaConteo = c; UI.cajaReal = St
 // ---------- Tutorial guiado (como el boton "Tutorial" de los eventos virtuales) ----------
 var TUTORIAL = [
   { vista:"tablero", titulo:"Tablero", texto:"Aquí está la cuenta principal: lo que entró por las notas de la app, menos los gastos, igual a la utilidad. Arriba elige el periodo (hoy, semana, mes, rango). Abajo, gráficos, calendario y mapa de ventas." },
-  { vista:"envivo", titulo:"Rico Pollo en vivo", texto:"Su local en 3D en tiempo real: cada nota entra como un cliente. Toque la caja, la cámara, el almacén, los camiones o el ranking (o los botones de abajo) para ver sus números. \"Ruta de hoy\" marca quién sale con cada camión." },
+  { vista:"envivo", titulo:"Rico Pollo en vivo", texto:"Su local en 3D en tiempo real: cada nota entra como un cliente. Toque la caja, la cámara, el almacén, cada camión o el ranking (o los botones de abajo) para ver sus números. \"Ruta de hoy\" marca quién sale con cada camión." },
   { vista:"gastos", titulo:"Gastos", texto:"Registre aquí cada gasto (puede sacarle foto al comprobante y la página lee el monto). Los gastos fijos, cuotas y sueldos aparecen cada mes para registrarlos con un toque. También puede importar el archivo del SIRE." },
   { vista:"mercaderias", titulo:"Mercaderías", texto:"Todas las compras de mercadería: por fecha, por producto y por proveedor, con el costo por kilo. Al registrar una compra puede anotar la merma al recibir." },
   { vista:"kardex", titulo:"Kardex", texto:"Lo que entra (compras) menos lo que sale (notas de venta) = lo que debería quedar de cada producto. Las mermas se descuentan aquí. Toque un producto para ver sus movimientos." },
