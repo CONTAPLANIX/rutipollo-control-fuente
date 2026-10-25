@@ -60,6 +60,13 @@
   por producto y por proveedor, filtro `UI.mercProd` y buscador `UI.mercBuscar`; en el celular la pestaña se llama "Compras" (5.º elemento de `navs`).
   Arreglos tras revisión: la merma "al recibir" (`compraId`) se edita/elimina/restaura junto con su compra (`mermasDeCompra`); la migración
   de categorías corre una sola vez (`control/config.catsV = 26`); el camión 2 vuelve hasta su sitio; `guardarRutaHoy` actualiza el botón de la barra.
+- C28 (25-oct-2026): Excel/PDF incluyen Mercaderías y Tinas (`datosExport.compras/tinas`); alarma de tope de crédito en la escena
+  (`VIVO.topeAnt`, evento `alarma`, `sonar("alarma")`, solo si la escena lleva >15 s montada); cobranza por WhatsApp (`mensajeCobranza`,
+  `waUrl`, `abrirWaCobrar`, botón `wa-cobrar` en avisos de deuda/tope y en el banner; `mayoristas[].telefono` opcional); resumen por
+  WhatsApp (`resumenDiaTexto`, `abrirResumenWa`; en Tablero usa el periodo, en En vivo el día; a las 20:00 se abre solo una vez al día,
+  `lsGet("resumenWa")`); avisos `margen` (`ventasBajoCosto`: precio de hoy < costo promedio del mes); caja por billetes y monedas
+  (`DENOMINACIONES`, `UI.cajaConteo`, se guarda en `cierres.conteo`); tutorial guiado (`TUTORIAL`, `#tut-card`, `lsGet("tutorialVisto")`,
+  botón en Ajustes); Ruta de hoy elige camión por persona (`rutaHoy.camiones {NOMBRE_NORMALIZADO: 0|1}`, `camionesHoy`).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
