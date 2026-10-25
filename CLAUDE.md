@@ -101,6 +101,12 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
 - C38 (25-oct-2026): GSAP 3.13.0 + DrawSVGPlugin (cdnjs) para que la línea del recorrido se dibuje parada por parada (`animarRecorrido`,
   `gsapListo`, botón "Ver de nuevo" `rec-animar`; también en el mini mapa). Respeta prefers-reduced-motion; sin GSAP la línea sale completa.
   Las skills oficiales de GSAP (greensock/gsap-skills) están instaladas en `~/.claude/skills/gsap-*`: leerlas antes de escribir animaciones.
+- C39 (25-oct-2026): GSAP en toda la página (plugins ScrollTrigger, MotionPath, Flip, SplitText por cdnjs 3.13.0; `gsapListo` los registra,
+  `sinMovimiento` respeta reduced-motion): camino del dinero en el Tablero (`caminoDinero(animar)`: SVG en `.eq`, DrawSVG + punto MotionPath;
+  se anima al entrar al Tablero o cambiar periodo, en resize solo se redibuja), números con gsap (`animarNumeros`), tarjetas escalonadas y
+  ScrollTrigger.batch (`animarTarjetas`; los triggers se matan en cada render), camión del mini mapa por la curva (MotionPath sobre `polyM._path`,
+  `MINI.tween` se mata al cerrar/cambiar/salir), tarjeta de zona con FLIP manual (`animarTarjetaZona`), cierre del día en timeline (luces,
+  letrero, voz, monedas) y textos con SplitText (`animarTexto`, con limpieza del split anterior). Revisión: 4 fallas corregidas.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
