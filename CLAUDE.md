@@ -68,6 +68,9 @@
   (`DENOMINACIONES`, `UI.cajaConteo`, se guarda en `cierres.conteo`); tutorial guiado (`TUTORIAL`, `#tut-card`, `lsGet("tutorialVisto")`,
   botón en Ajustes); Ruta de hoy elige camión por persona (`rutaHoy.camiones {NOMBRE_NORMALIZADO: 0|1}`, `camionesHoy`).
 - C29 (25-oct-2026): zonas `camion1` y `camion2` separadas (una por camión, `ZONAS[].camion` = índice en `VIVO.motos`); la tarjeta muestra chofer y ventas en ruta de ese chofer.
+- C30 (25-oct-2026): paradas del día por camión (`ventasCamion(ci)`: notas en ruta de los choferes de ese camión, en orden de hora) con
+  dirección aproximada por GPS (`direccionDe` → Nominatim reverse, cola de 1 pedido/1,1 s, caché `lrc_geo` en localStorage, `direccionCorta`),
+  `paradasHtml`, `cargarDirecciones` (rellena `[data-geo]`), y "Ver recorrido en el mapa" (`abrirRecorrido`: Leaflet con marcadores numerados y línea).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
