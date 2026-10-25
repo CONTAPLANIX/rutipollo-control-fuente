@@ -330,7 +330,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C32";
+var APP_VERSION = "25 oct · C33";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -692,7 +692,7 @@ function colorVendedor(nombre){ var lista = Object.keys(S.ventas).reduce(functio
 function mapaHtml(r, ing){
   var con = ing.lista.filter(function(v){ return v.ubicacion && num(v.ubicacion.lat) && num(v.ubicacion.lon); });
   var vend = {}; con.forEach(function(v){ vend[v.vendedor||"(sin vendedor)"] = (vend[v.vendedor||"(sin vendedor)"]||0)+1; });
-  return '<div class="card"><h2><span style="display:inline-flex;align-items:center;gap:8px;"><span class="ic" style="display:inline-flex;">'+ico("mapa")+'</span>Mapa de ventas</span> <span class="kard-sub">'+con.length+' de '+ing.lista.length+' notas con ubicación · el tamaño es el monto</span></h2>'
+  return '<div class="card"><h2><span style="display:inline-flex;align-items:center;gap:8px;"><span class="ic" style="display:inline-flex;">'+ico("mapa")+'</span>Mapa de ventas</span> <span class="kard-sub">'+con.length+' de '+ing.lista.length+' notas con ubicación · el tamaño es el monto</span> <button class="btn btn-sm" data-action="recorridos" data-val="'+(r.hasta < todayISO() ? r.hasta : todayISO())+'" style="float:right;">Recorridos por día</button></h2>'
     + (con.length ? '<div id="mapa-ventas"></div><div class="mapa-leg">'+Object.keys(vend).sort().map(function(k){ return '<span><i style="background:'+colorVendedor(k)+'"></i>'+escapeHtml(k)+' ('+vend[k]+')</span>'; }).join("")+'</div>' : '<p class="empty">Ninguna nota de este periodo tiene ubicación. La app la guarda cuando el celular tiene el GPS activo.</p>')+'</div>';
 }
 function montarMapa(){
@@ -1298,7 +1298,7 @@ function zonaInfoHtml(id){
     var enRuta = ventasCamion(z.camion); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
     var otro = VIVO.motos[z.camion ? 0 : 1];
     body = '<ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;"><div class="kard-sub" style="margin-bottom:4px;">Paradas de hoy (hacia dónde fue):</div>'+paradasHtml(enRuta)+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
-      + '<div class="actions-row" style="justify-content:flex-start;">'+(enRuta.some(function(v){ return v.ubicacion && num(v.ubicacion.lat); }) ? '<button class="btn btn-sm btn-primary" data-action="recorrido" data-val="'+z.camion+'">Ver recorrido en el mapa</button>' : '')+'<button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
+      + '<div class="actions-row" style="justify-content:flex-start;">'+(enRuta.some(function(v){ return v.ubicacion && num(v.ubicacion.lat); }) ? '<button class="btn btn-sm btn-primary" data-action="recorrido" data-val="'+z.camion+'">Ver recorrido en el mapa</button>' : '')+'<button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button><button class="btn btn-sm" data-action="recorridos" data-val="'+todayISO()+'">Otros días</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
   else if(id==="marcador"){ body = podioHtml(VIVO.marcador||[]); }
   return '<div class="zc-head"><span class="ic">'+ico(z.ico)+'</span><strong>'+z.nombre+'</strong><span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="vivo-zona-cerrar" title="Cerrar">✕</button></div>'+body;
 }
@@ -1329,10 +1329,24 @@ function cargarDirecciones(){
 }
 var RECORRIDO = { mapa:null };
 function abrirRecorrido(ci){
-  var m = VIVO.motos[ci] || {}, lista = ventasCamion(ci), con = lista.filter(function(v){ return v.ubicacion && num(v.ubicacion.lat); });
-  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("camion")+'</span> Recorrido de hoy · '+escapeHtml(m.nombre||"camión")+(m.chofer ? ' · '+escapeHtml(m.chofer) : '')+'</h2><p class="kard-sub" style="margin-bottom:8px;">'+lista.length+' parada'+(lista.length===1?'':'s')+' en orden de hora · '+con.length+' con ubicación GPS. Las direcciones son aproximadas (según el GPS del celular al emitir la nota).</p>'
-    + '<div id="mapa-recorrido"></div>' + paradasHtml(lista)
-    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cerrar</button></div></div></div>';
+  var m = VIVO.motos[ci] || {}, lista = ventasCamion(ci);
+  pintarRecorrido('Recorrido de hoy · '+escapeHtml(m.nombre||"camión")+(m.chofer ? ' · '+escapeHtml(m.chofer) : ''), lista, '<button class="btn" data-action="recorridos" data-val="'+todayISO()+'">Otros días</button>');
+}
+function ventasDelDia(fecha, vendedor){
+  return Object.keys(S.ventas).map(function(id){ return S.ventas[id]; }).filter(function(v){ return !v.eliminado && String(v.fecha||"").slice(0,10)===fecha && (!vendedor || normalizar(v.vendedor||"")===normalizar(vendedor)); }).sort(function(a,b){ return num(a.creadoEn)-num(b.creadoEn); });
+}
+function abrirRecorridos(fecha, vendedor){
+  fecha = fecha || todayISO(); vendedor = vendedor || ""; UI.recFecha = fecha; UI.recVend = vendedor; var anio = Number(fecha.slice(0,4)); cargarAnio(anio, false);
+  var todas = ventasDelDia(fecha, ""), vends = []; todas.forEach(function(v){ var k = v.vendedor||"(sin vendedor)"; if(vends.indexOf(k) < 0) vends.push(k); }); vends.sort();
+  var lista = ventasDelDia(fecha, vendedor);
+  var controles = '<div class="per-bar" style="margin:0 0 10px;"><label class="sel-wrap"><span>Día</span><input type="date" id="rec-fecha" value="'+fecha+'" max="'+todayISO()+'"></label><label class="sel-wrap"><span>Vendedor</span><select id="rec-vend"><option value="">Todos ('+todas.length+')</option>'+vends.map(function(k){ return '<option value="'+escapeHtml(k)+'"'+(normalizar(k)===normalizar(vendedor)?' selected':'')+'>'+escapeHtml(k)+' ('+todas.filter(function(v){ return (v.vendedor||"(sin vendedor)")===k; }).length+')</option>'; }).join("")+'</select></label>'+(S.aniosCargados[anio]==="cargando" ? '<span class="kard-sub">cargando las notas de '+anio+'… vuelva a elegir el día en unos segundos</span>' : '')+'</div>';
+  pintarRecorrido('Recorridos · '+diaSemana(fecha)+' '+fechaDisplay(fecha)+(vendedor ? ' · '+escapeHtml(vendedor) : ''), lista, '', controles);
+}
+function pintarRecorrido(titulo, lista, botonesExtra, controlesHtml){
+  var con = lista.filter(function(v){ return v.ubicacion && num(v.ubicacion.lat); });
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("camion")+'</span> '+titulo+'</h2>'+(controlesHtml||'')+'<p class="kard-sub" style="margin-bottom:8px;">'+lista.length+' parada'+(lista.length===1?'':'s')+' en orden de hora · '+con.length+' con ubicación GPS. Las direcciones son aproximadas (según el GPS del celular al emitir la nota).</p>'
+    + '<div id="mapa-recorrido"></div>' + (lista.length ? paradasHtml(lista) : '<p class="empty">No hay notas ese día'+(controlesHtml ? ' para esa elección' : '')+'.</p>')
+    + '<div class="actions-row">'+(botonesExtra||'')+'<span class="sp"></span><button class="btn" data-action="cerrar-overlay">Cerrar</button></div></div></div>';
   cargarDirecciones();
   if(RECORRIDO.mapa){ try{ RECORRIDO.mapa.remove(); }catch(e){} RECORRIDO.mapa = null; }
   var el = document.getElementById("mapa-recorrido"); if(!el || !window.L || !con.length){ if(el) el.innerHTML = '<p class="empty">Ninguna parada tiene ubicación GPS.</p>'; return; }
@@ -2603,6 +2617,7 @@ document.addEventListener("click", function(ev){
   if(action==="vivo-zona"){ vivoZona(val); return; }
   if(action==="vivo-zona-cerrar"){ vivoZonaCerrar(); return; }
   if(action==="recorrido"){ abrirRecorrido(Number(val)||0); return; }
+  if(action==="recorridos"){ abrirRecorridos(val||todayISO(), ""); return; }
   if(action==="vivo-pantalla"){ var vc = document.querySelector(".vivo-card"); if(!vc) return; if(document.fullscreenElement){ document.exitFullscreen(); } else if(vc.requestFullscreen){ vc.requestFullscreen().then(function(){ setTimeout(vivoLayout, 300); }).catch(function(){}); } return; }
   if(action==="guardar-merma"){ guardarMerma(); return; }
   if(action==="quitar-mov"){ var mv = S.egresos[id]; if(mv && confirm("¿Quitar este movimiento del Kardex ("+(mv.tipo==="merma"?"merma":"ajuste")+" de "+kgTxt(mv.kardex?mv.kardex.kg:0)+")?")){ eliminarGasto(id, true, true); } return; }
@@ -2661,6 +2676,8 @@ document.addEventListener("change", function(ev){
   else if(id==="per-hasta"){ if(el.value){ UI.per.hasta = el.value; asegurarAnios(); render(); } }
   else if(id==="gastos-cat"){ UI.gastosCat = el.value; render(); }
   else if(id==="merc-prod"){ UI.mercProd = el.value; render(); }
+  else if(id==="rec-fecha"){ if(el.value) abrirRecorridos(el.value, UI.recVend||""); }
+  else if(id==="rec-vend"){ abrirRecorridos(UI.recFecha||todayISO(), el.value); }
   else if(id==="caja-dia"){ if(el.value){ UI.cajaDia = el.value; UI.cajaReal = ""; UI.cajaNota = ""; UI.cajaConteo = null; asegurarAnios(); cargarAnio(Number(el.value.slice(0,4)), false); render(); } }
 });
 document.addEventListener("input", function(ev){
