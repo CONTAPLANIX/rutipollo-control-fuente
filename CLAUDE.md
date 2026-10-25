@@ -107,6 +107,12 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   ScrollTrigger.batch (`animarTarjetas`; los triggers se matan en cada render), camión del mini mapa por la curva (MotionPath sobre `polyM._path`,
   `MINI.tween` se mata al cerrar/cambiar/salir), tarjeta de zona con FLIP manual (`animarTarjetaZona`), cierre del día en timeline (luces,
   letrero, voz, monedas) y textos con SplitText (`animarTexto`, con limpieza del split anterior). Revisión: 4 fallas corregidas.
+- C40 (25-oct-2026): menos lecturas de Firestore. Ese día `rutipollo-ventas` agotó el cupo gratuito diario de lecturas (50.000; HTTP 429
+  "Quota exceeded") porque la página leía el año entero en cada apertura (y los respaldos leen todo 3 veces al día); la app de los celulares
+  no se afecta para emitir (solo lecturas). Arreglo: `enablePersistence({synchronizeTabs:true})` (caché local: en las siguientes visitas solo
+  bajan los cambios) y ventana de 70 días (`VENTANA_DIAS`, `cargarRecientes` → `S.ventanaDesde`, `S.recientesListo`); el año completo
+  (`cargarAnio`) solo se pide si el periodo, el recorrido o la repetición caen antes de la ventana (`asegurarAnios` lo omite si no hace falta).
+  `avisarCuota(e)` muestra un aviso claro ("cupo diario de lecturas; se renueva a las 2 am") en los listeners de ventas/egresos/deudas.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
