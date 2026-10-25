@@ -191,6 +191,17 @@
   #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
   .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
   .vivo-zonas{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  @media (max-width:760px){ .vivo-zona-card{ top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46%; font-size:12.5px; padding:8px 10px; } }
+  .btn.wa{ border-color:#25d366; color:#128c4a; } .btn.wa .ic svg{ stroke:#128c4a; } .btn.wa:hover{ background:#e9fbef; }
+  .den-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; } @media (max-width:480px){ .den-grid{ grid-template-columns:1fr; } }
+  .den{ display:grid; grid-template-columns:62px 1fr 70px; align-items:center; gap:8px; font-size:13px; } .den input{ width:100%; } .den-v{ text-align:right; font-family:"IBM Plex Mono",monospace; color:var(--ink-soft); font-size:12px; }
+  .ruta-fila{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line); }
+  .tut-card{ position:fixed; left:50%; bottom:84px; transform:translateX(-50%); width:min(460px, calc(100% - 24px)); background:var(--paper-raised); border:2px solid var(--accent); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow-lg); z-index:70; font-size:13.5px; animation:tutIn .2s ease-out; } @keyframes tutIn{ from{ opacity:0; transform:translate(-50%, 8px); } to{ opacity:1; transform:translate(-50%, 0); } }
+  @media (min-width:861px){ .tut-card{ bottom:24px; } }
+  .tut-head{ display:flex; align-items:center; gap:8px; margin-bottom:4px; } .tut-head .ic svg{ stroke:var(--accent); } .tut-card p{ margin:4px 0 0; }
+  .nav-btn.tut-on, .tab-btn.tut-on{ outline:2px solid var(--accent); outline-offset:2px; animation:tutpulse 1.2s ease-in-out infinite; }
+  @keyframes tutpulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(247,98,4,.5); } 50%{ box-shadow:0 0 0 8px rgba(247,98,4,0); } }
+  @media (prefers-reduced-motion: reduce){ .nav-btn.tut-on, .tab-btn.tut-on{ animation:none; } }
   .vivo-zonas button{ display:flex; flex-direction:column; align-items:center; gap:3px; min-width:74px; padding:7px 10px; border:1px solid var(--line); border-radius:12px; background:var(--paper-raised); color:var(--ink-soft); font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
   .vivo-zonas button .ic svg{ width:24px; height:24px; }
   .vivo-zonas button:hover, .vivo-zonas button.on{ color:var(--accent); border-color:var(--accent); box-shadow:0 0 0 3px rgba(247,98,4,.16); }
@@ -314,7 +325,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "24 oct · C27";
+var APP_VERSION = "25 oct · C28";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -351,7 +362,11 @@ var ICONOS = {
   almacen:'<path d="M3 4h18M3 10h18M3 16h18M5 4v16M19 4v16"/><circle cx="9" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/>',
   camion:'<path d="M2 7h11v9H2zM13 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
   frio:'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
-  trofeo:'<path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3M12 14v4M8 20h8"/>'
+  trofeo:'<path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
+  wa:'<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z"/><path d="M9 8.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1a4 4 0 0 1-2-2l1-1-1-2z"/>',
+  margen:'<path d="M3 17l5-5 4 4 8-8M14 8h6v6"/>',
+  billetes:'<rect x="2" y="7" width="20" height="12" rx="2"/><circle cx="12" cy="13" r="3"/><path d="M5 10h.01M19 16h.01"/>',
+  tutorial:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14M12 17h.01"/>'
 };
 function ico(n){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONOS[n]||"")+'</svg>'; }
 // ---------- utilidades ----------
@@ -689,11 +704,12 @@ function montarMapa(){
 }
 function calcAlertas(){
   var A = S.config.alertas, out = [], hoyF = todayISO();
-  mayoristasEstado().forEach(function(x){ if(x.pasado) out.push({ ic:ico("alarma"), tipo:"tope", txt:"ALARMA: "+escapeHtml(x.m.cliente)+" pasó su tope de crédito", sub:"debe "+fmt(x.deuda)+" · tope "+fmt(x.m.tope)+" · cobrar antes de venderle más a crédito" }); else if(x.cerca) out.push({ ic:ico("alarma"), tipo:"tope", txt:escapeHtml(x.m.cliente)+" está cerca de su tope de crédito", sub:"debe "+fmt(x.deuda)+" de "+fmt(x.m.tope)+" ("+pctTxt(x.pct)+")" }); });
+  mayoristasEstado().forEach(function(x){ if(x.pasado) out.push({ ic:ico("alarma"), tipo:"tope", cliente:x.m.cliente, txt:"ALARMA: "+escapeHtml(x.m.cliente)+" pasó su tope de crédito", sub:"debe "+fmt(x.deuda)+" · tope "+fmt(x.m.tope)+" · cobrar antes de venderle más a crédito" }); else if(x.cerca) out.push({ ic:ico("alarma"), tipo:"tope", cliente:x.m.cliente, txt:escapeHtml(x.m.cliente)+" está cerca de su tope de crédito", sub:"debe "+fmt(x.deuda)+" de "+fmt(x.m.tope)+" ("+pctTxt(x.pct)+")" }); });
+  ventasBajoCosto().forEach(function(b){ out.push({ ic:ico("margen"), tipo:"margen", txt:escapeHtml(b.producto.toLowerCase())+" se vendió por debajo del costo", sub:b.n+(b.n===1?" vez":" veces")+" hoy · vendido a S/ "+n2(b.precio)+" y el costo promedio del mes es S/ "+n2(b.costo)+" · notas "+b.notas.join(", "), vista:"mercaderias" }); });
   if(A.tinasDias > 0) calcTinas({ desde:hoyF, hasta:hoyF }).porCliente.forEach(function(g){ if(g.saldo > 0 && g.desde && diasEntre(g.desde, hoyF) >= A.tinasDias) out.push({ ic:ico("tinas"), tipo:"tinas", txt:escapeHtml(g.cliente)+" tiene "+g.saldo+" tina"+(g.saldo===1?"":"s")+" desde hace "+diasEntre(g.desde, hoyF)+" días", sub:"salieron el "+fechaDisplay(g.desde)+" · pedir que las devuelva", vista:"tinas" }); });
   Object.keys(S.cierres).sort().reverse().slice(0, 10).forEach(function(f){ var c = S.cierres[f]; var d = num(c.real) - num(c.esperado); if(Math.abs(d) >= A.cajaDif && A.cajaDif > 0) out.push({ ic:ico("caja"), tipo:"caja", txt:"Caja del "+fechaDisplay(f)+": "+(d < 0 ? "faltaron" : "sobraron")+" "+fmt(Math.abs(d)), sub:"esperado "+fmt(c.esperado)+" · contado "+fmt(c.real), vista:"caja", val:f }); });
   var deudas = {}; Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !estaPendiente(v)) return; var k = v.cliente || "(sin nombre)"; var g = deudas[k] || (deudas[k] = { monto:0, n:0, desde:v.fecha }); g.monto += saldoPendiente(v); g.n++; if(v.fecha < g.desde) g.desde = v.fecha; });
-  Object.keys(deudas).sort(function(a,b){ return deudas[b].monto-deudas[a].monto; }).forEach(function(k){ var g = deudas[k]; if(A.deudaCliente > 0 && g.monto >= A.deudaCliente) out.push({ ic:ico("gastos"), tipo:"deuda", txt:escapeHtml(k)+" debe "+fmt(g.monto), sub:g.n+" nota"+(g.n===1?"":"s")+" pendiente"+(g.n===1?"":"s")+" · la más antigua del "+fechaDisplay(g.desde) }); });
+  Object.keys(deudas).sort(function(a,b){ return deudas[b].monto-deudas[a].monto; }).forEach(function(k){ var g = deudas[k]; if(A.deudaCliente > 0 && g.monto >= A.deudaCliente) out.push({ ic:ico("gastos"), tipo:"deuda", cliente:(k==="(sin nombre)" ? "" : k), txt:escapeHtml(k)+" debe "+fmt(g.monto), sub:g.n+" nota"+(g.n===1?"":"s")+" pendiente"+(g.n===1?"":"s")+" · la más antigua del "+fechaDisplay(g.desde) }); });
   calcKardex({ desde:hoyF, hasta:hoyF }).forEach(function(p){ if(A.stockMin > 0 && (p.entradas > 0 || p.ini > 0) && p.final < A.stockMin) out.push({ ic:ico("kardex"), tipo:"stock", txt:escapeHtml(p.nombre)+": quedan "+kgTxt(p.final)+" "+escapeHtml(p.unidad), sub:"por debajo del mínimo de "+kgTxt(A.stockMin), vista:"kardex" }); });
   return out;
 }
@@ -703,10 +719,10 @@ function avisosHtml(){
 }
 function renderAvisos(){
   var al = calcAlertas(), A = S.config.alertas;
-  var grupos = [["tope",'<span class="ic">'+ico("alarma")+'</span>',"Mayoristas al tope de crédito","Clientes mayoristas (lista en Ajustes) cuya deuda llegó al tope que usted les puso. Suena la alarma arriba de la página."],["tinas",'<span class="ic">'+ico("tinas")+'</span>',"Tinas sin devolver","Clientes que tienen tinas (bandejas) desde hace más días que el límite."],["caja",'<span class="ic">'+ico("caja")+'</span>',"Caja que no cuadra","Cierres guardados en Caja donde el efectivo contado no coincide con el esperado."],["deuda",'<span class="ic">'+ico("gastos")+'</span>',"Clientes con deuda alta","Suma de todas las notas pendientes de cada cliente."],["stock",'<span class="ic">'+ico("kardex")+'</span>',"Productos con poco stock","Según el Kardex (solo productos con compras o inventario registrado)."]];
+  var grupos = [["tope",'<span class="ic">'+ico("alarma")+'</span>',"Mayoristas al tope de crédito","Clientes mayoristas (lista en Ajustes) cuya deuda llegó al tope que usted les puso. Suena la alarma arriba de la página. El botón WhatsApp abre el mensaje de cobranza listo."],["margen",'<span class="ic">'+ico("margen")+'</span>',"Vendido por debajo del costo","Productos vendidos hoy a un precio menor que su costo promedio de compra del mes (según Mercaderías)."],["tinas",'<span class="ic">'+ico("tinas")+'</span>',"Tinas sin devolver","Clientes que tienen tinas (bandejas) desde hace más días que el límite."],["caja",'<span class="ic">'+ico("caja")+'</span>',"Caja que no cuadra","Cierres guardados en Caja donde el efectivo contado no coincide con el esperado."],["deuda",'<span class="ic">'+ico("gastos")+'</span>',"Clientes con deuda alta","Suma de todas las notas pendientes de cada cliente."],["stock",'<span class="ic">'+ico("kardex")+'</span>',"Productos con poco stock","Según el Kardex (solo productos con compras o inventario registrado)."]];
   var html = '<h1 class="section-title">Avisos</h1><p class="section-sub">'+(al.length ? al.length+' aviso'+(al.length===1?'':'s')+' pendiente'+(al.length===1?'':'s')+'. Se calculan solos con los datos de la app y de esta página.' : 'Todo en orden: no hay nada que avisar.')+'</p>'
     + '<div class="cols-2"><div>'
-    + grupos.map(function(g){ var lista = al.filter(function(a){ return a.tipo===g[0]; }); return '<div class="card"><h2>'+g[1]+' '+g[2]+' <span class="kard-sub">'+lista.length+'</span></h2><p class="kard-sub" style="margin:-4px 0 8px;">'+g[3]+'</p>'+(lista.length ? lista.map(function(a){ return '<div class="aviso"'+(a.vista ? ' data-action="vista" data-val="'+a.vista+'" style="cursor:pointer;"' : '')+'><span class="ic" style="display:inline-flex;">'+a.ic+'</span><div><div>'+a.txt+'</div><div class="sub">'+a.sub+'</div></div></div>'; }).join("") : '<p class="empty" style="padding:6px 0;">Ninguno.</p>')+'</div>'; }).join("")
+    + grupos.map(function(g){ var lista = al.filter(function(a){ return a.tipo===g[0]; }); return '<div class="card"><h2>'+g[1]+' '+g[2]+' <span class="kard-sub">'+lista.length+'</span></h2><p class="kard-sub" style="margin:-4px 0 8px;">'+g[3]+'</p>'+(lista.length ? lista.map(function(a){ return '<div class="aviso"'+(a.vista ? ' data-action="vista" data-val="'+a.vista+'" style="cursor:pointer;"' : '')+'><span class="ic" style="display:inline-flex;">'+a.ic+'</span><div style="flex:1;min-width:0;"><div>'+a.txt+'</div><div class="sub">'+a.sub+'</div></div>'+(a.cliente ? '<button class="btn btn-sm wa" data-action="wa-cobrar" data-val="'+escapeHtml(a.cliente)+'" title="Mandar recordatorio por WhatsApp"><span class="ic">'+ico("wa")+'</span>WhatsApp</button>' : '')+'</div>'; }).join("") : '<p class="empty" style="padding:6px 0;">Ninguno.</p>')+'</div>'; }).join("")
     + '</div><div><div class="card"><h2>Límites de los avisos</h2><p class="kard-sub" style="margin-bottom:8px;">Ponga 0 para apagar un aviso.</p><div class="field"><label for="al-caja">Avisar si la caja no cuadra por más de (S/)</label><input type="number" id="al-caja" min="0" step="1" value="'+A.cajaDif+'"></div><div class="field"><label for="al-deuda">Avisar si un cliente debe más de (S/)</label><input type="number" id="al-deuda" min="0" step="1" value="'+A.deudaCliente+'"></div><div class="field"><label for="al-stock">Avisar si un producto baja de (kg)</label><input type="number" id="al-stock" min="0" step="1" value="'+A.stockMin+'"></div><div class="field"><label for="al-tinas">Avisar si un cliente tiene tinas más de (días)</label><input type="number" id="al-tinas" min="0" step="1" value="'+(A.tinasDias||0)+'"></div><div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary btn-sm" data-action="guardar-alertas">Guardar límites</button></div></div></div></div>';
   return html;
 }
@@ -741,7 +757,7 @@ function renderTablero(){
   var html = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px;"><h1 class="section-title" style="margin:0;">Tablero</h1><button class="btn btn-primary" data-action="vista" data-val="envivo" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;"><span class="ic" style="display:inline-flex;">'+ico("envivo")+'</span>Ver Rico Pollo en vivo</button></div><p class="section-sub">Lo que entró por las notas de la app, menos lo que salió por los gastos registrados aquí. Montos en soles.</p>'
     + periodoBarHtml()
     + '<div class="toolbar"><div class="seg small"><button class="'+(UI.utilBase==="cobrado"?'on':'')+'" data-action="util-base" data-val="cobrado">Utilidad con lo cobrado</button><button class="'+(UI.utilBase==="vendido"?'on':'')+'" data-action="util-base" data-val="vendido">Utilidad con lo vendido</button></div><span class="sp"></span>'
-    + '<button class="btn btn-sm" data-action="exportar-excel">Descargar Excel</button><button class="btn btn-sm" data-action="exportar-pdf">Descargar PDF</button></div>'
+    + '<button class="btn btn-sm" data-action="exportar-excel">Descargar Excel</button><button class="btn btn-sm" data-action="exportar-pdf">Descargar PDF</button><button class="btn btn-sm wa" data-action="resumen-wa" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("wa")+'</span>Resumen por WhatsApp</button></div>'
     + (cargando ? '<div class="note">Cargando notas de la app…</div>' : '')
     + avisosHtml()
     + '<div class="eq">'
@@ -900,16 +916,18 @@ function rolDe(nombre){ var n = normalizar(nombre); var u = (S.usuarios||[]).fin
 function rutaHoy(){ var r = S.config.rutaHoy; var hoyF = todayISO(); if(r && r.fecha === hoyF && Array.isArray(r.nombres)) return r.nombres.map(String); return (S.usuarios||[]).filter(function(u){ return u.rol !== "admin" && u.nombre; }).map(function(u){ return String(u.nombre); }); }
 function enRutaHoy(nombre){ var n = normalizar(nombre); if(rutaHoy().some(function(x){ return normalizar(x)===n; })) return true; var r = S.config.rutaHoy; if(r && r.fecha === todayISO() && Array.isArray(r.nombres)) return false; return rolDe(nombre) !== 'admin'; }
 function esVentaEnRuta(v){ return enRutaHoy(v.vendedor||''); }
+function camionesHoy(){ var r = S.config.rutaHoy; return (r && r.fecha === todayISO() && r.camiones) ? r.camiones : {}; }
 function abrirRutaHoy(){
   var todos = (S.usuarios||[]).map(function(u){ return String(u.nombre||""); }).filter(Boolean).sort(); if(!todos.length) todos = [S.user.nombre];
   var sel = rutaHoy();
-  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>¿Quién sale a ruta hoy?</h2><p class="kard-sub" style="margin-bottom:10px;">Los marcados aparecen junto al camión y sus notas se ven como ventas en ruta. Los demás atienden en caja. Vale solo por hoy, '+fechaDisplay(todayISO())+'.</p>'
-    + todos.map(function(n){ var on = sel.some(function(x){ return normalizar(x)===normalizar(n); }); return '<label class="chk"><input type="checkbox" class="ruta-chk" value="'+escapeHtml(n)+'"'+(on?' checked':'')+'> '+escapeHtml(n)+' <span class="kard-sub">'+(rolDe(n)==="admin" ? "caja" : "ruta")+'</span></label>'; }).join("")
+  var cam = camionesHoy();
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>¿Quién sale a ruta hoy y en qué camión?</h2><p class="kard-sub" style="margin-bottom:10px;">Elija para cada persona: Caja, Camión 1 o Camión 2. Los de ruta aparecen junto a su camión y sus notas se ven como ventas en ruta. Vale solo por hoy, '+fechaDisplay(todayISO())+'.</p>'
+    + todos.map(function(n){ var on = sel.some(function(x){ return normalizar(x)===normalizar(n); }); var ci = on ? (cam[normalizar(n)] !== undefined ? Number(cam[normalizar(n)]) : 0) : -1; return '<div class="ruta-fila"><span>'+escapeHtml(n)+' <span class="kard-sub">'+(rolDe(n)==="admin" ? "caja" : "vendedor")+'</span></span><div class="seg small ruta-seg" data-nombre="'+escapeHtml(n)+'"><button type="button" class="'+(ci<0?'on':'')+'" data-action="ruta-cam" data-val="-1">Caja</button><button type="button" class="'+(ci===0?'on':'')+'" data-action="ruta-cam" data-val="0">Camión 1</button><button type="button" class="'+(ci===1?'on':'')+'" data-action="ruta-cam" data-val="1">Camión 2</button></div></div>'; }).join("")
     + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-ruta-hoy">Guardar</button></div></div></div>';
 }
 function guardarRutaHoy(){
-  var nombres = [].slice.call(document.querySelectorAll(".ruta-chk:checked")).map(function(c){ return c.value; });
-  S.config.rutaHoy = { fecha:todayISO(), nombres:nombres }; closeOverlay();
+  var nombres = [], camiones = {}; document.querySelectorAll(".ruta-seg").forEach(function(sg){ var on = sg.querySelector("button.on"); var ci = on ? Number(on.getAttribute("data-val")) : -1; if(ci >= 0){ nombres.push(sg.getAttribute("data-nombre")); camiones[normalizar(sg.getAttribute("data-nombre"))] = ci; } });
+  S.config.rutaHoy = { fecha:todayISO(), nombres:nombres, camiones:camiones }; closeOverlay();
   S.db.doc("control/config").set({ rutaHoy:S.config.rutaHoy, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).then(function(){ toast("Ruta de hoy: "+(nombres.join(", ")||"nadie")); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
   VIVO.ruterosClave = ""; VIVO.cajerosClave = ""; var rb = document.querySelector('.vivo-bar [data-action="ruta-hoy"]'); if(rb) rb.textContent = "Ruta de hoy: "+(nombres.join(", ")||"nadie"); vivoRefrescar();
 }
@@ -1254,7 +1272,7 @@ function vivoZona(id){
   vivoZonaPintar();
 }
 function vivoZonaCerrar(){ VIVO.zonaActiva = null; T3.foco = null; vivoZonaPintar(); }
-function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
+function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
 function vivoZonasBarHtml(){ return '<div class="vivo-zonas">'+ZONAS.map(function(z){ return '<button data-action="vivo-zona" data-val="'+z.id+'" class="'+(VIVO.zonaActiva===z.id?'on':'')+'" title="Ver '+z.nombre+'"><span class="ic">'+ico(z.ico)+'</span><span>'+z.nombre+'</span></button>'; }).join("")+'</div>'; }
 function vivoZonasAlertas(){
   var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion = true; });
@@ -1461,6 +1479,7 @@ function procesarCola(ts){
   if(ev.tipo==="venta") clienteCompra(ev);
   else if(ev.tipo==="cobro"){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", 4.75, 8.6, 20); }, i*90); VIVO.cajaBrillo = 1.4; efecto("texto", 6.7, 4.4, 60, "Cobro deuda "+fmt(ev.monto)+" · "+(ev.cliente||""), "#1d7a3e"); }
   else if(ev.tipo==="compra"){ VIVO.camiones.push({ x:-4, y:9.6, t:0, fase:0, viva:true, texto:"+"+kgTxt(ev.kg)+" kg "+String(ev.producto||"").toLowerCase() }); setTimeout(function(){ VIVO.stockCajas = Math.min(16, VIVO.stockCajas + Math.max(1, Math.round(num(ev.kg)/50))); VIVO.stockKg += num(ev.kg); efecto("texto", 6.5, 1, 40, "+"+kgTxt(ev.kg)+" kg", "#1d7a3e"); if(VIVO.trabajador){ VIVO.trabajador.ruta = [{x:1.5,y:3.6},{x:6.5,y:2.6},{x:4.9,y:3.4}]; } }, 2600); }
+  else if(ev.tipo==="alarma"){ FIESTA.banner = { texto:"⚠ "+ev.cliente+" pasó su tope de crédito · debe "+fmt(ev.deuda), t:0, vida:7 }; efecto("texto", 6.7, 4.4, 60, "ALARMA · "+ev.cliente, "#c23b2c"); }
   else if(ev.tipo==="merma"){ VIVO.stockKg -= num(ev.kg); VIVO.stockCajas = Math.max(0, VIVO.stockCajas - Math.max(1, Math.round(num(ev.kg)/50))); efecto("texto", 6.5, 1, 40, "−"+kgTxt(ev.kg)+" kg merma", "#c23b2c"); }
 }
 function ambiente(dt){
@@ -1479,10 +1498,11 @@ function camionDe(vendedor){
 function camionCercano(x){ var mejor = VIVO.motos[0]; VIVO.motos.forEach(function(m){ if(Math.abs(m.px - x) < Math.abs(mejor.px - x)) mejor = m; }); return mejor ? mejor.px : x; }
 function vivoRuteros(){
   var ruta = rutaHoy().slice().sort().slice(0, 3);
-  var clave = ruta.join("|"); if(VIVO.ruterosClave === clave && VIVO.ruteros && VIVO.ruteros.every(function(c){ return c.viva; })) return;
+  var clave = ruta.join("|")+"#"+JSON.stringify(camionesHoy()); if(VIVO.ruterosClave === clave && VIVO.ruteros && VIVO.ruteros.every(function(c){ return c.viva; })) return;
   (VIVO.ruteros||[]).forEach(function(c){ c.viva = false; }); VIVO.ruterosClave = clave; VIVO.motos.forEach(function(m){ m.chofer = ""; });
-  VIVO.ruteros = ruta.map(function(n, i){ var nm = VIVO.motos.length || 1, ci = i % nm, m = VIVO.motos[ci] || { px:5.2 }; if(m && !m.chofer) m.chofer = n;
-    var pr = nuevaPersona({ x:m.px + 1.5 + Math.floor(i/nm)*0.7, y:9.0, color:ci===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; pr.camion = ci; return pr; });
+  var cam = camionesHoy(), porCamion = {};
+  VIVO.ruteros = ruta.map(function(n, i){ var nm = VIVO.motos.length || 1, ci = cam[normalizar(n)] !== undefined ? Math.min(nm-1, Math.max(0, Number(cam[normalizar(n)]))) : i % nm, m = VIVO.motos[ci] || { px:5.2 }; if(m) m.chofer = m.chofer ? m.chofer+" + "+n : n; var k = porCamion[ci] || 0; porCamion[ci] = k+1;
+    var pr = nuevaPersona({ x:m.px + 1.5 + k*0.7, y:9.0, color:ci===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; pr.camion = ci; return pr; });
 }
 function vivoCajeros(){
   var admins = (S.usuarios||[]).filter(function(u){ return u.rol==="admin" && u.nombre && !enRutaHoy(u.nombre); }).map(function(u){ return String(u.nombre); }).sort();
@@ -1522,6 +1542,10 @@ function vivoSincronizar(){
   VIVO.marcador = Object.keys(porVend).map(function(k){ return porVend[k]; }).sort(function(a,b){ return b.vendido-a.vendido; });
   Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.tipoPago!=="credito") return; var ab = montoAbonado(v); var ant = VIVO.abonos[id]; VIVO.abonos[id] = ab; if(!primera && ant !== undefined && ab > ant + 0.009){ var ult = abonosEfectivos(v)[abonosEfectivos(v).length-1]; if(ult && String(ult.fecha||"").slice(0,10)===f) VIVO.cola.push({ tipo:"cobro", monto:ab-ant, cliente:v.cliente }); } });
   Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.eliminado || e.fecha !== f || !e.kardex) return; var k = "eg_"+id; if(VIVO.vistos[k]) return; VIVO.vistos[k] = true; if(primera) return; if(e.tipo==="merma") VIVO.cola.push({ tipo:"merma", kg:e.kardex.kg, producto:e.kardex.producto }); else if(e.tipo!=="ajuste") VIVO.cola.push({ tipo:"compra", kg:e.kardex.kg, producto:e.kardex.producto }); });
+  // mayoristas que acaban de pasar su tope de credito: alarma en la escena
+  var pasados = mayoristasEstado().filter(function(x){ return x.pasado; }); var clavesP = {}; pasados.forEach(function(x){ clavesP[normalizar(x.m.cliente)] = x; });
+  if(!primera && VIVO.topeAnt && Date.now() - (VIVO.montadoEn||0) > 15000){ Object.keys(clavesP).forEach(function(k){ if(!VIVO.topeAnt[k]) VIVO.cola.push({ tipo:"alarma", cliente:clavesP[k].m.cliente, deuda:clavesP[k].deuda, tope:clavesP[k].m.tope }); }); }
+  VIVO.topeAnt = clavesP;
   // stock según kardex
   var kx = calcKardex({ desde:f, hasta:f }); var kg = kx.reduce(function(s,p){ return s + Math.max(0, p.final); }, 0);
   VIVO.stockKg = kg; VIVO.stockCajas = Math.min(16, Math.round(kg/50));
@@ -1551,12 +1575,12 @@ function renderEnVivo(){
   return '<h1 class="section-title"><span class="live-dot"></span>Rico Pollo en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. Toque la caja, la cámara, la vitrina, el almacén, los camiones o el ranking (o los botones de abajo) para ver sus números. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
     + '<div class="vivo-grid"><div class="card vivo-card"><canvas id="vivo-canvas" aria-label="Escena del local en vivo"></canvas>'
     + '<div id="vivo-zona-card" class="vivo-zona-card" style="display:none;"></div>'+vivoZonasBarHtml()
-    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
+    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm wa" data-action="resumen-wa" data-val="hoy" title="Resumen del día por WhatsApp"><span class="ic" style="display:inline-flex;">'+ico("wa")+'</span></button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
     + '<div class="card" id="vivo-panel">'+vivoPanelHtml()+'</div></div>';
 }
 function vivoMontar(){
   var c = document.getElementById("vivo-canvas"); if(!c) return;
-  VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO";
+  VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO"; VIVO.montadoEn = Date.now();
   var glAnt = document.getElementById("vivo-gl"); if(glAnt) glAnt.style.display = "none"; c.style.display = "";
   vivo3dReset(); VIVO.modo = "2d"; vivoLayout();
   if(T3.on && hayWebGL()){ VIVO.modo = "3d"; var est0 = document.getElementById("vivo-estado"); if(est0) est0.textContent = "Cargando la vista 3D…";
@@ -1583,6 +1607,7 @@ function sonar(tipo){
     if(!VIVO.master){ VIVO.master = ac.createGain(); VIVO.master.gain.value = 0.55; var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7000; VIVO.master.connect(lp); lp.connect(ac.destination); }
     var t = ac.currentTime;
     if(tipo==="fiesta"){ [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){ tono(ac, f, t+i*0.12, 0.6, "triangle", 0.16); tono(ac, f*2, t+i*0.12, 0.35, "sine", 0.05); }); return; }
+    if(tipo==="alarma"){ for(var a=0;a<4;a++){ tono(ac, 880, t+a*0.5, 0.24, "square", 0.08); tono(ac, 660, t+a*0.5+0.25, 0.24, "square", 0.08); } return; }
     // campanita de caja registradora: golpe corto + campana con sus armonicos, que se apaga despacio
     var buf = ac.createBuffer(1, Math.round(ac.sampleRate*0.05), ac.sampleRate), d = buf.getChannelData(0); for(var i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2.5);
     var ruido = ac.createBufferSource(); ruido.buffer = buf; var gr = ac.createGain(); gr.gain.value = 0.09; var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 2500; ruido.connect(hp); hp.connect(gr); gr.connect(VIVO.master); ruido.start(t);
@@ -1603,7 +1628,9 @@ function decir(txt){
 function solesTxt(n){ n = num(n); var e = Math.floor(n), c = Math.round((n-e)*100); if(c >= 100){ e++; c = 0; } return e+" sol"+(e===1?"":"es")+(c ? " con "+c : ""); }
 function nombreVoz(n){ return String(n||"").trim().toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
 function anunciar(ev){
-  if(!VIVO.sonido || ev.silencio) return; sonar();
+  if(!VIVO.sonido || ev.silencio) return;
+  if(ev.tipo==="alarma"){ sonar("alarma"); setTimeout(function(){ decir("Alarma de crédito. "+nombreVoz(ev.cliente)+" pasó su tope. Debe "+solesTxt(ev.deuda)+"."); }, 1800); return; }
+  sonar();
   if(ev.tipo==="venta"){ var v = ev.v; decir((estaPendiente(v) ? "Nueva venta a crédito de " : "Nueva venta de ")+solesTxt(v.total)+"."+(v.cliente ? " Cliente "+nombreVoz(v.cliente)+"." : "")+(v.vendedor ? " Atendió "+nombreVoz(v.vendedor)+"." : "")); }
   else if(ev.tipo==="cobro") decir("Cobro de deuda: "+solesTxt(ev.monto)+(ev.cliente ? ", de "+nombreVoz(ev.cliente) : "")+".");
   else if(ev.tipo==="compra") decir("Llegó la compra: "+kgTxt(ev.kg)+" kilos de "+String(ev.producto||"").toLowerCase()+".");
@@ -1894,7 +1921,7 @@ function renderCaja(){
   return '<h1 class="section-title">Caja</h1><p class="section-sub">Para cuadrar el cierre del día: efectivo cobrado menos egresos en efectivo = efectivo que debería haber en caja.</p>'
     + '<div class="per-bar"><label class="sel-wrap"><span>Día</span><input type="date" id="caja-dia" value="'+f+'"></label><button class="btn btn-sm" data-action="caja-hoy">Hoy</button><span class="per-title">'+diaSemana(f)+' '+fechaDisplay(f)+'</span></div>'
     + '<div class="cols-2"><div class="card"><h2>Efectivo del día</h2><table><tbody>'+filas.map(function(x){ return '<tr><td>'+x[0]+'</td><td class="num '+x[2]+'">'+n2(x[1])+'</td></tr>'; }).join("")+'<tr class="tot"><td>Efectivo esperado en caja</td><td class="num">'+n2(C.esperado)+'</td></tr></tbody></table>'
-    + '<div class="field" style="margin-top:14px;"><label for="caja-real">Efectivo contado (lo que hay de verdad)</label><input type="number" id="caja-real" inputmode="decimal" step="0.01" placeholder="0.00" value="'+(real===null?'':real)+'"></div>'
+    + '<div class="field" style="margin-top:14px;"><label for="caja-real">Efectivo contado (lo que hay de verdad)</label><input type="number" id="caja-real" inputmode="decimal" step="0.01" placeholder="0.00" value="'+(real===null?'':real)+'"></div><div class="actions-row" style="justify-content:flex-start;margin:-6px 0 8px;"><button class="btn btn-sm" data-action="caja-contar" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("billetes")+'</span>Contar billetes y monedas</button>'+(UI.cajaConteo ? '<span class="kard-sub">conteo: '+DENOMINACIONES.filter(function(d){ return UI.cajaConteo[String(d)]; }).map(function(d){ return UI.cajaConteo[String(d)]+'×'+(d>=1?d:(d*100)+'c'); }).join(' · ')+'</span>' : (c && c.conteo ? '<span class="kard-sub">conteo guardado: '+Object.keys(c.conteo).map(function(d){ return c.conteo[d]+'×'+(Number(d)>=1?d:(Number(d)*100)+'c'); }).join(' · ')+'</span>' : ''))+'</div>'
     + (dif===null ? '<div class="note">Escribe el efectivo contado para ver la diferencia.</div>' : '<div class="note '+(Math.abs(dif)<0.01?'ok':dif<0?'danger':'warn')+'"><span class="diff-big">'+(dif>=0?'+':'−')+fmt(Math.abs(dif)).replace("S/ ","")+'</span><br>'+(Math.abs(dif)<0.01 ? 'La caja cuadra.' : dif<0 ? 'Falta dinero en caja.' : 'Sobra dinero en caja (¿un ingreso sin nota o un gasto registrado de más?).')+'</div>')
     + '<div class="field"><label for="caja-nota">Nota del cierre (opcional)</label><input type="text" id="caja-nota" maxlength="120" value="'+escapeHtml(UI.cajaNota || (c ? c.nota||"" : ""))+'"></div>'
     + '<div class="actions-row"><span class="sp"></span>'+(c ? '<span class="kard-sub">Guardado por '+escapeHtml(c.por||"")+' · '+(c.guardadoEn ? new Date(num(c.guardadoEn)).toLocaleString("es-PE") : '')+'</span>' : '')+'<button class="btn btn-primary" data-action="guardar-cierre">Guardar cierre</button></div></div>'
@@ -1904,8 +1931,8 @@ function renderCaja(){
 function guardarCierre(){
   var f = UI.cajaDia || todayISO(), C = calcCaja(f); var realEl = document.getElementById("caja-real"); var real = realEl.value===""? null : r2(realEl.value);
   if(real===null){ toast("Escribe el efectivo contado"); realEl.focus(); return; }
-  var obj = { fecha:f, esperado:r2(C.esperado), real:real, diferencia:r2(real-C.esperado), efectivoCobrado:r2(C.ing.cobrado.efectivo), egresosEfectivo:r2(C.eg.porMetodo.efectivo), nota:document.getElementById("caja-nota").value.trim(), por:S.user.nombre, guardadoEn:Date.now() };
-  S.cierres[f] = obj; UI.cajaReal = ""; UI.cajaNota = "";
+  var obj = { fecha:f, esperado:r2(C.esperado), real:real, diferencia:r2(real-C.esperado), efectivoCobrado:r2(C.ing.cobrado.efectivo), egresosEfectivo:r2(C.eg.porMetodo.efectivo), nota:document.getElementById("caja-nota").value.trim(), conteo:UI.cajaConteo||null, por:S.user.nombre, guardadoEn:Date.now() };
+  S.cierres[f] = obj; UI.cajaReal = ""; UI.cajaNota = ""; UI.cajaConteo = null;
   S.db.collection("cierres").doc(f).set(obj).then(function(){ toast("Cierre guardado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
   render();
 }
@@ -1921,6 +1948,7 @@ function renderAjustes(){
     + mayoristasAjustesHtml()
     + tinasAjustesHtml()
     + '<div class="card"><h2>Instalar como aplicación</h2><p class="kard-sub" style="margin-bottom:8px;">Queda con su propio ícono y abre a pantalla completa, en la computadora y en el celular.</p>'+(window.__instalar ? '<button class="btn btn-primary" data-action="instalar-app">Instalar en este equipo</button>' : (/iphone|ipad/i.test(navigator.userAgent) ? '<p>En iPhone: toque el botón <strong>Compartir</strong> de Safari y luego <strong>"Agregar a inicio"</strong>.</p>' : (window.matchMedia("(display-mode: standalone)").matches ? '<p class="note ok">Ya está instalada en este equipo.</p>' : '<p>En Chrome: menú <strong>⋮</strong> → <strong>"Instalar aplicación"</strong> (o "Agregar a la pantalla de inicio" en el celular).</p>')))+'</div>'
+    + '<div class="card"><h2>Tutorial</h2><p class="kard-sub" style="margin-bottom:8px;">Un recorrido corto por cada pestaña explicando para qué sirve.</p><button class="btn" data-action="tut-iniciar" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tutorial")+'</span>Ver el tutorial</button></div>'
     + '<div class="card"><h2>Mi cuenta</h2><p>Entraste como <strong>'+escapeHtml(S.user.nombre)+'</strong> (administradora). Es el mismo usuario y contraseña de la app '+CFG.app+'.</p>'
     + '<div class="actions-row" style="justify-content:flex-start;"><button class="btn" data-action="cambiar-pass">Cambiar mi contraseña</button><button class="btn btn-ghost" data-action="cerrar-sesion">Cerrar sesión</button></div></div>'
     + '<div class="card"><h2>Acerca de</h2><p class="kard-sub">'+CFG.titulo+' · versión '+APP_VERSION+'<br>Los ingresos se leen en vivo de las notas de la app '+CFG.app+' (misma base de datos). Los gastos, ajustes de kardex y cierres de caja se guardan en esa misma base y solo los ven las administradoras.<br>Sistema JEED · WhatsApp 918 817 528</p></div></div></div>';
@@ -1987,10 +2015,10 @@ function categoriaSugerida(nombre, tipo, ruc, comp){
   var n = normalizar(nombre+" "+tipo);
   if(/^10/.test(String(ruc||"")) && /^E/i.test(String(comp||""))) return S.categorias.indexOf("Honorarios") >= 0 ? "Honorarios" : "Honorarios";
   if(/HONORARIO|RECIBO POR H|R\.?H\.?E|\bRH\b/.test(n)) return S.categorias.indexOf("Honorarios") >= 0 ? "Honorarios" : "Sueldos";
+  if(/EMBUTID|CHORIZO|HOT ?DOG|SALCHICH|JAMON|CREMA|MAYONES|KETCHUP|MOSTAZA|SALSA/.test(n)) return "Embutidos y cremas";
   if(/AVICOLA|AV COLA|POLLO|GRANJA|\bAVES\b|AVIC/.test(n)) return "Compra de pollo";
   if(/GRIFO|COMBUST|PETROL|PRIMAX|REPSOL|GASOLIN|GLP|ESTACION DE SERV/.test(n)) return "Transporte / combustible";
   if(/LUZ DEL SUR|ELECTR|SEDAPAL|AGUA|CALIDDA|CLARO|MOVISTAR|ENTEL|BITEL|TELEF|INTERNET|CABLE/.test(n)) return S.categorias.indexOf("Servicios básicos del local") >= 0 ? "Servicios básicos del local" : "Servicios";
-  if(/EMBUTID|CHORIZO|HOT ?DOG|SALCHICH|JAMON|CREMA|MAYONES|KETCHUP|MOSTAZA|SALSA/.test(n)) return "Embutidos y cremas";
   if(/ALQUILER|ARRENDAM|INMOBILIARIA/.test(n)) return "Alquiler";
   return "Insumos";
 }
@@ -2074,19 +2102,97 @@ function trabajadoresAjustesHtml(){
     + '<div class="grid-2"><div class="field"><label for="trab-dia">Día de pago</label><input type="number" id="trab-dia" min="1" max="31" value="30"></div><div class="field"><label for="trab-metodo">Forma de pago</label><select id="trab-metodo">'+METODOS.map(function(m){ return '<option value="'+m+'"'+(m==="efectivo"?' selected':'')+'>'+metodoLabel(m)+'</option>'; }).join("")+'</select></div></div>'
     + '<div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary" data-action="trab-agregar">Agregar trabajador</button></div></div>';
 }
+function waUrl(telefono, texto){ var d = String(telefono||"").replace(/\D/g,""); if(d.length===10 && d.charAt(0)==="0") d = d.slice(1); if(d.length===9) d = "51"+d; return "https://wa.me/"+(d.length >= 10 ? d : "")+"?text="+encodeURIComponent(texto); }
+function telefonoDe(cliente){ var m = (S.config.mayoristas||[]).find(function(x){ return normalizar(x.cliente)===normalizar(cliente); }); return m && m.telefono ? m.telefono : ""; }
+function mensajeCobranza(cliente){
+  var k = normalizar(cliente), notas = Object.keys(S.ventas).map(function(id){ return S.ventas[id]; }).filter(function(v){ return !v.eliminado && estaPendiente(v) && normalizar(v.cliente||"")===k; }).sort(function(a,b){ return a.fecha<b.fecha?-1:1; });
+  var total = notas.reduce(function(s,v){ return s+saldoPendiente(v); }, 0);
+  var lineas = notas.map(function(v){ return "• Nota N° "+numNota(v)+" del "+fechaDisplay(v.fecha)+": S/ "+n2(saldoPendiente(v)); });
+  return "Buen día, "+String(cliente).trim()+". Le escribe "+CFG.nombre+". Tiene pendiente de pago S/ "+n2(total)+(notas.length ? ":\n"+lineas.join("\n") : ".")+"\nAgradeceremos su pago para seguir atendiéndolo con normalidad. ¡Gracias!";
+}
+function abrirWaCobrar(cliente){
+  var txt = mensajeCobranza(cliente), tel = telefonoDe(cliente);
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("wa")+'</span> Cobranza por WhatsApp</h2><p class="kard-sub" style="margin-bottom:8px;">Revise el mensaje (puede cambiarlo) y toque "Abrir WhatsApp". '+(tel ? 'Se abre el chat con el '+escapeHtml(tel)+'.' : 'Como no hay celular guardado, WhatsApp le pedirá elegir el contacto.')+'</p>'
+    + '<div class="field"><label for="wa-tel">Celular (opcional)</label><input type="tel" id="wa-tel" inputmode="numeric" maxlength="15" value="'+escapeHtml(tel)+'" placeholder="Ej. 987654321"></div>'
+    + '<div class="field"><label for="wa-txt">Mensaje</label><textarea id="wa-txt" rows="8" style="width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);">'+escapeHtml(txt)+'</textarea></div>'
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="wa-abrir">Abrir WhatsApp</button></div></div></div>';
+}
+function waAbrirDesdeModal(){ var tel = (document.getElementById("wa-tel")||{}).value, txt = (document.getElementById("wa-txt")||{}).value; if(!txt) return; window.open(waUrl(tel, txt), "_blank", "noopener"); closeOverlay(); }
+function resumenDiaTexto(r){
+  r = r || { tipo:"hoy", desde:todayISO(), hasta:todayISO(), titulo:"Hoy, "+diaSemana(todayISO())+" "+fechaDisplay(todayISO()) };
+  var R = calcResumen(r), ing = R.ing, eg = R.eg, tn = calcTinas({ desde:todayISO(), hasta:todayISO() });
+  var vend = Object.keys(ing.porVendedor).sort(function(a,b){ return ing.porVendedor[b]-ing.porVendedor[a]; });
+  var L = ["*"+CFG.nombre+" · Resumen · "+r.titulo+"*", "Vendido: S/ "+n2(ing.vendido)+" ("+ing.notas+" nota"+(ing.notas===1?"":"s")+")", "Cobrado: S/ "+n2(ing.cobrado.total)+" (efectivo "+n2(ing.cobrado.efectivo)+" · banco "+n2(ing.cobrado.banco)+" · Yape "+n2(ing.cobrado.yape)+" · Plin "+n2(ing.cobrado.plin)+")"];
+  if(ing.deudas.total > 0.009) L.push("De eso, cobros de deudas: S/ "+n2(ing.deudas.total));
+  L.push("Gastos: S/ "+n2(eg.total)+" ("+eg.n+")", "*Utilidad (cobrado − gastos): S/ "+n2(R.utilidadCobrado)+"*", "Por cobrar de estas notas: S/ "+n2(ing.porCobrar), "Efectivo que debe haber en caja: S/ "+n2(ing.cobrado.efectivo - eg.porMetodo.efectivo));
+  if(vend.length) L.push("Por vendedor: "+vend.map(function(v){ return v+" S/ "+n2(ing.porVendedor[v]); }).join(" · "));
+  if(tn.enCalle) L.push("Tinas en la calle: "+tn.enCalle+" ("+tn.conTinas+" cliente"+(tn.conTinas===1?"":"s")+")");
+  var top = mayoristasEstado().filter(function(x){ return x.pasado; }); if(top.length) L.push("⚠ Al tope de crédito: "+top.map(function(x){ return x.m.cliente+" debe S/ "+n2(x.deuda)+" (tope S/ "+n2(x.m.tope)+")"; }).join(" · "));
+  return L.join("\n");
+}
+function abrirResumenWa(r, automatico){
+  var txt = resumenDiaTexto(r);
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("wa")+'</span> Resumen por WhatsApp</h2><p class="kard-sub" style="margin-bottom:8px;">'+(automatico ? 'Son las 8 de la noche: este es el resumen del día, listo para reenviar.' : 'Listo para reenviar a quien usted quiera. Puede cambiar el texto.')+'</p>'
+    + '<div class="field"><textarea id="wa-txt" rows="12" style="width:100%;font:inherit;font-size:13px;padding:10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);">'+escapeHtml(txt)+'</textarea></div>'
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cerrar</button><button class="btn" data-action="wa-copiar">Copiar</button><button class="btn btn-primary" data-action="wa-abrir">Abrir WhatsApp</button></div></div></div>';
+}
+setInterval(function(){ var d = new Date(); if(!S.user || d.getHours() !== 20 || d.getMinutes() > 4) return; if(lsGet("resumenWa", "") === todayISO() || document.querySelector(".overlay")) return; lsSet("resumenWa", todayISO()); abrirResumenWa(null, true); }, 60000);
+function ventasBajoCosto(){
+  var hoyF = todayISO(), mes = { desde:hoyF.slice(0,7)+"-01", hasta:hoyF }, costos = {};
+  calcKardex(mes).forEach(function(p){ if(p.costoProm > 0) costos[normalizar(p.nombre)] = p.costoProm; });
+  var out = {};
+  Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || String(v.fecha||"").slice(0,10) !== hoyF) return;
+    (v.items||[]).forEach(function(it){ if(!it || !it.producto) return; var c = costos[normalizar(it.producto)]; var precio = num(it.precio); if(!c || !(precio > 0) || precio >= c*0.999) return; var k = normalizar(it.producto); var g = out[k] || (out[k] = { producto:String(it.producto), costo:c, precio:precio, n:0, notas:[] }); g.n++; if(precio < g.precio) g.precio = precio; if(g.notas.indexOf(numNota(v)) < 0) g.notas.push(numNota(v)); }); });
+  return Object.keys(out).map(function(k){ return out[k]; });
+}
+var DENOMINACIONES = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
+function abrirConteoCaja(){
+  var c = UI.cajaConteo || {};
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("billetes")+'</span> Contar billetes y monedas</h2><p class="kard-sub" style="margin-bottom:8px;">Escriba cuántos hay de cada uno; la página suma sola.</p>'
+    + '<div class="den-grid">'+DENOMINACIONES.map(function(d){ var v = c[String(d)]||""; return '<label class="den"><span class="den-k">'+(d >= 1 ? 'S/ '+d : (d*100)+' cts')+'</span><input type="number" class="den-cant" data-den="'+d+'" inputmode="numeric" min="0" step="1" value="'+v+'" placeholder="0"><span class="den-v" id="den-v-'+String(d).replace(".","_")+'">'+(v ? n2(v*d) : '')+'</span></label>'; }).join("")+'</div>'
+    + '<div class="note" style="display:flex;align-items:center;gap:10px;margin-top:10px;"><span>Total contado</span><strong class="mono" id="den-total" style="margin-left:auto;font-size:18px;">'+fmt(conteoTotal(c))+'</strong></div>'
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="den-usar">Usar este total</button></div></div></div>';
+  setTimeout(function(){ var el = document.querySelector(".den-cant"); if(el) el.focus(); }, 50);
+}
+function conteoTotal(c){ return r2(DENOMINACIONES.reduce(function(s,d){ return s + num(c[String(d)])*d; }, 0)); }
+function conteoLeer(){ var c = {}; document.querySelectorAll(".den-cant").forEach(function(i){ var n = Math.max(0, Math.round(num(i.value))); if(n) c[i.getAttribute("data-den")] = n; }); return c; }
+function conteoPintar(){ var c = conteoLeer(); DENOMINACIONES.forEach(function(d){ var el = document.getElementById("den-v-"+String(d).replace(".","_")); if(el) el.textContent = c[String(d)] ? n2(c[String(d)]*d) : ""; }); var t = document.getElementById("den-total"); if(t) t.textContent = fmt(conteoTotal(c)); }
+function conteoUsar(){ var c = conteoLeer(); UI.cajaConteo = c; UI.cajaReal = String(conteoTotal(c)); closeOverlay(); render(); toast("Efectivo contado: "+fmt(conteoTotal(c))); }
+// ---------- Tutorial guiado (como el boton "Tutorial" de los eventos virtuales) ----------
+var TUTORIAL = [
+  { vista:"tablero", titulo:"Tablero", texto:"Aquí está la cuenta principal: lo que entró por las notas de la app, menos los gastos, igual a la utilidad. Arriba elige el periodo (hoy, semana, mes, rango). Abajo, gráficos, calendario y mapa de ventas." },
+  { vista:"envivo", titulo:"Rico Pollo en vivo", texto:"Su local en 3D en tiempo real: cada nota entra como un cliente. Toque la caja, la cámara, el almacén, los camiones o el ranking (o los botones de abajo) para ver sus números. \"Ruta de hoy\" marca quién sale con cada camión." },
+  { vista:"gastos", titulo:"Gastos", texto:"Registre aquí cada gasto (puede sacarle foto al comprobante y la página lee el monto). Los gastos fijos, cuotas y sueldos aparecen cada mes para registrarlos con un toque. También puede importar el archivo del SIRE." },
+  { vista:"mercaderias", titulo:"Mercaderías", texto:"Todas las compras de mercadería: por fecha, por producto y por proveedor, con el costo por kilo. Al registrar una compra puede anotar la merma al recibir." },
+  { vista:"kardex", titulo:"Kardex", texto:"Lo que entra (compras) menos lo que sale (notas de venta) = lo que debería quedar de cada producto. Las mermas se descuentan aquí. Toque un producto para ver sus movimientos." },
+  { vista:"tinas", titulo:"Tinas", texto:"Control de las tinas que salen con los pedidos: registre la salida y la devolución, y vea cuántas tiene cada cliente y desde cuándo." },
+  { vista:"caja", titulo:"Caja", texto:"Para cuadrar el día: efectivo cobrado menos gastos en efectivo = lo que debe haber. Puede contar billetes y monedas y la página suma. Guarde el cierre." },
+  { vista:"avisos", titulo:"Avisos", texto:"La página avisa sola: mayoristas al tope de crédito (con botón para cobrar por WhatsApp), tinas sin devolver, caja descuadrada, poco stock y ventas por debajo del costo." },
+  { vista:"ajustes", titulo:"Ajustes", texto:"Categorías, metas, gastos fijos y cuotas, trabajadores y sueldos, mayoristas con tope de crédito, total de tinas, contraseña. Aquí también puede volver a ver este tutorial." }
+];
+var TUT = { i:-1 };
+function tutorialIniciar(){ TUT.i = 0; tutorialPaso(); }
+function tutorialPaso(){
+  var card = document.getElementById("tut-card"); if(TUT.i < 0 || TUT.i >= TUTORIAL.length){ TUT.i = -1; if(card) card.remove(); document.querySelectorAll(".tut-on").forEach(function(b){ b.classList.remove("tut-on"); }); lsSet("tutorialVisto", true); return; }
+  var p = TUTORIAL[TUT.i]; if(UI.vista !== p.vista){ UI.vista = p.vista; render(); }
+  document.querySelectorAll(".tut-on").forEach(function(b){ b.classList.remove("tut-on"); }); document.querySelectorAll('[data-action="vista"][data-val="'+p.vista+'"]').forEach(function(b){ if(b.classList.contains("nav-btn") || b.classList.contains("tab-btn")) b.classList.add("tut-on"); });
+  if(!card){ card = document.createElement("div"); card.id = "tut-card"; card.className = "tut-card"; document.body.appendChild(card); }
+  card.innerHTML = '<div class="tut-head"><span class="ic">'+ico("tutorial")+'</span><strong>'+p.titulo+'</strong><span class="kard-sub" style="margin-left:auto;">'+(TUT.i+1)+' de '+TUTORIAL.length+'</span></div><p>'+p.texto+'</p><div class="actions-row" style="margin-top:8px;"><button class="btn btn-sm btn-ghost" data-action="tut-salir">Salir</button><span class="sp"></span>'+(TUT.i > 0 ? '<button class="btn btn-sm" data-action="tut-ant">Anterior</button>' : '')+'<button class="btn btn-sm btn-primary" data-action="tut-sig">'+(TUT.i === TUTORIAL.length-1 ? 'Terminar' : 'Siguiente')+'</button></div>';
+  window.scrollTo(0, 0);
+}
 function mayoristasEstado(){
   var deudas = {}; Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !estaPendiente(v)) return; var k = normalizar(v.cliente||""); deudas[k] = (deudas[k]||0) + saldoPendiente(v); });
   return (S.config.mayoristas||[]).map(function(m){ var d = r2(deudas[normalizar(m.cliente)]||0), tope = num(m.tope); return { m:m, deuda:d, pct:tope > 0 ? d/tope*100 : 0, pasado:tope > 0 && d >= tope, cerca:tope > 0 && d >= tope*0.8 && d < tope }; });
 }
 function alarmaHtml(){
   var l = mayoristasEstado().filter(function(x){ return x.pasado; }); if(!l.length) return "";
-  return '<div class="note danger alarma" data-action="vista" data-val="avisos" style="cursor:pointer;"><span class="ic">'+ico("alarma")+'</span><div><strong>ALARMA DE CRÉDITO:</strong> '+l.map(function(x){ return escapeHtml(x.m.cliente)+' debe '+fmt(x.deuda)+' (tope '+fmt(x.m.tope)+')'; }).join(' · ')+'. No darle más crédito hasta que pague.</div></div>';
+  return '<div class="note danger alarma"><span class="ic">'+ico("alarma")+'</span><div style="flex:1;"><strong>ALARMA DE CRÉDITO:</strong> '+l.map(function(x){ return escapeHtml(x.m.cliente)+' debe '+fmt(x.deuda)+' (tope '+fmt(x.m.tope)+')'; }).join(' · ')+'. No darle más crédito hasta que pague.</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+l.map(function(x){ return '<button class="btn btn-sm wa" data-action="wa-cobrar" data-val="'+escapeHtml(x.m.cliente)+'"><span class="ic">'+ico("wa")+'</span>Cobrar a '+escapeHtml(String(x.m.cliente).split(" ")[0])+'</button>'; }).join("")+'</div></div>';
 }
 function mayoristasAjustesHtml(){
   var est = mayoristasEstado();
   return '<div class="card"><h2>Clientes mayoristas con crédito</h2><p class="kard-sub" style="margin-bottom:8px;">Ponga un tope de deuda a cada mayorista. Cuando lo que debe (según las notas de la app) llega al tope, suena la alarma roja arriba de toda la página y en Avisos; al 80 % avisa que está cerca.</p>'
-    + (est.length ? '<ul class="ledger">'+est.map(function(x){ var p = Math.min(100, x.pct); return '<li><span class="lk">'+escapeHtml(x.m.cliente)+' <span class="kard-sub">tope '+fmt(x.m.tope)+'</span></span><span class="lv '+(x.pasado ? 'negv' : '')+'">debe '+fmt(x.deuda)+' <button class="btn btn-sm btn-ghost" data-action="may-quitar" data-id="'+x.m.id+'" style="color:var(--danger);">Quitar</button></span><span class="lb"><div class="meter '+(x.pasado ? 'warn' : p >= 80 ? '' : 'ok')+'"><i style="width:'+p.toFixed(0)+'%"></i></div></span><span class="ls">'+(x.pasado ? '⚠ pasó el tope' : x.cerca ? 'cerca del tope ('+pctTxt(x.pct)+')' : 'usa el '+pctTxt(x.pct)+' de su crédito')+'</span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay mayoristas.</p>')
-    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="may-cliente">Cliente (como está en las notas)</label><input type="text" id="may-cliente" list="may-lista" maxlength="60" placeholder="Ej. RESTAURANTE EL BUEN SABOR"><datalist id="may-lista">'+clientesNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div><div class="field"><label for="may-tope">Tope de crédito (S/)</label><input type="number" id="may-tope" min="0" step="1" placeholder="Ej. 1500"></div></div>'
+    + (est.length ? '<ul class="ledger">'+est.map(function(x){ var p = Math.min(100, x.pct); return '<li><span class="lk">'+escapeHtml(x.m.cliente)+' <span class="kard-sub">tope '+fmt(x.m.tope)+(x.m.telefono ? ' · cel '+escapeHtml(x.m.telefono) : '')+'</span></span><span class="lv '+(x.pasado ? 'negv' : '')+'">debe '+fmt(x.deuda)+' <button class="btn btn-sm btn-ghost" data-action="may-quitar" data-id="'+x.m.id+'" style="color:var(--danger);">Quitar</button></span><span class="lb"><div class="meter '+(x.pasado ? 'warn' : p >= 80 ? '' : 'ok')+'"><i style="width:'+p.toFixed(0)+'%"></i></div></span><span class="ls">'+(x.pasado ? '⚠ pasó el tope' : x.cerca ? 'cerca del tope ('+pctTxt(x.pct)+')' : 'usa el '+pctTxt(x.pct)+' de su crédito')+'</span></li>'; }).join("")+'</ul>' : '<p class="empty" style="padding:4px 0;">Todavía no hay mayoristas.</p>')
+    + '<div class="grid-2" style="margin-top:10px;"><div class="field"><label for="may-cliente">Cliente (como está en las notas)</label><input type="text" id="may-cliente" list="may-lista" maxlength="60" placeholder="Ej. RESTAURANTE EL BUEN SABOR"><datalist id="may-lista">'+clientesNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div><div class="field"><label for="may-tope">Tope de crédito (S/)</label><input type="number" id="may-tope" min="0" step="1" placeholder="Ej. 1500"></div></div><div class="field" style="max-width:320px;"><label for="may-tel">Celular (opcional, para WhatsApp)</label><input type="tel" id="may-tel" inputmode="numeric" maxlength="15" placeholder="Ej. 987654321"></div>'
     + '<div class="actions-row" style="justify-content:flex-start;margin-top:0;"><button class="btn btn-primary" data-action="may-agregar">Agregar mayorista</button></div></div>';
 }
 function tinasAjustesHtml(){
@@ -2167,19 +2273,22 @@ function datosExport(){
   var dias = {}; Object.keys(ing.porDia).forEach(function(f){ dias[f]=1; }); Object.keys(eg.porDia).forEach(function(f){ dias[f]=1; });
   var porDia = Object.keys(dias).sort().map(function(f){ var d = ing.porDia[f] || { notas:0, vendido:0, cobrado:0, efectivo:0, banco:0, yape:0, plin:0, deudas:0 }, e = eg.porDia[f]||0; return [f, d.notas, r2(d.vendido), r2(d.cobrado), r2(d.efectivo), r2(d.banco), r2(d.yape), r2(d.plin), r2(d.deudas), r2(e), r2((UI.utilBase==="vendido"?d.vendido:d.cobrado)-e)]; });
   var cats = Object.keys(eg.porCat).sort(function(a,b){ return eg.porCat[b]-eg.porCat[a]; }).map(function(c){ return [c, r2(eg.porCat[c]), r2(pct(eg.porCat[c], eg.total))]; });
-  return { r:r, R:R, ing:ing, eg:eg, k:k, porDia:porDia, cats:cats, mer:mermasDe(k) };
+  return { r:r, R:R, ing:ing, eg:eg, k:k, porDia:porDia, cats:cats, mer:mermasDe(k), compras:calcCompras(r), tinas:calcTinas(r) };
 }
 function exportarExcel(){
   var D = datosExport(), r = D.r, R = D.R, ing = D.ing, eg = D.eg;
   var resumen = [["Concepto","Monto (S/)"], ["Periodo", r.titulo], ["Vendido (notas emitidas)", r2(ing.vendido)], ["Notas emitidas", ing.notas], ["Cobrado total", r2(ing.cobrado.total)], ["  Efectivo", r2(ing.cobrado.efectivo)], ["  Banco", r2(ing.cobrado.banco)], ["  Yape", r2(ing.cobrado.yape)], ["  Plin", r2(ing.cobrado.plin)], ["  De los cuales, cobros de deudas", r2(ing.deudas.total)],
-    ["Egresos", r2(eg.total)], ["Utilidad (cobrado - egresos)", r2(R.utilidadCobrado)], ["Margen sobre cobrado (%)", r2(pct(R.utilidadCobrado, ing.cobrado.total))], ["Utilidad (vendido - egresos)", r2(R.utilidadVendido)], ["Margen sobre vendido (%)", r2(pct(R.utilidadVendido, ing.vendido))], ["Por cobrar (notas del periodo)", r2(ing.porCobrar)], ["Mermas estimadas (ya incluidas en compras, no se restan otra vez)", r2(D.mer.costo)], ["Mermas en kg / unidades", r2(D.mer.kg)], ["Generado", new Date().toLocaleString("es-PE")+" por "+S.user.nombre]];
+    ["Egresos", r2(eg.total)], ["Utilidad (cobrado - egresos)", r2(R.utilidadCobrado)], ["Margen sobre cobrado (%)", r2(pct(R.utilidadCobrado, ing.cobrado.total))], ["Utilidad (vendido - egresos)", r2(R.utilidadVendido)], ["Margen sobre vendido (%)", r2(pct(R.utilidadVendido, ing.vendido))], ["Por cobrar (notas del periodo)", r2(ing.porCobrar)], ["Mermas estimadas (ya incluidas en compras, no se restan otra vez)", r2(D.mer.costo)], ["Mermas en kg / unidades", r2(D.mer.kg)], ["Compras de mercaderia (S/)", r2(D.compras.total)], ["Kg / unidades comprados", r2(D.compras.kg)], ["Tinas en la calle (hoy)", D.tinas.enCalle], ["Generado", new Date().toLocaleString("es-PE")+" por "+S.user.nombre]];
   var hojas = [
     { nombre:"Resumen", filas:resumen },
     { nombre:"Por dia", filas:[["Fecha","Notas","Vendido","Cobrado","Efectivo","Banco","Yape","Plin","Cobros de deudas","Egresos","Utilidad"]].concat(D.porDia) },
     { nombre:"Egresos", filas:[["Fecha","Categoria","Descripcion","Monto","Forma de pago","Registro","Producto kardex","Kg"]].concat(eg.lista.map(function(e){ return [e.fecha, e.categoria||"", e.descripcion||"", r2(e.monto), metodoLabel(metodoK(e.metodo)), e.registradoPor||"", e.kardex?e.kardex.producto:"", e.kardex?r2(e.kardex.kg):""]; })) },
     { nombre:"Por categoria", filas:[["Categoria","Monto","%"]].concat(D.cats) },
     { nombre:"Kardex", filas:[["Producto","Unidad","Saldo inicial","Entradas","Salidas","Ajustes","Mermas","Saldo final","Costo promedio","Compras S/","Costo vendido S/","Mermas S/","Vendido S/"]].concat(D.k.map(function(p){ return [p.nombre, p.unidad, r2(p.ini), r2(p.entradas), r2(p.salidas), r2(p.ajustes), r2(p.mermas), r2(p.final), r2(p.costoProm), r2(p.costoCompra), r2(p.costoVendido), r2(p.costoMerma), r2(p.ventaImporte)]; })) },
-    { nombre:"Mermas", filas:[["Fecha","Producto","Unidad","Kg / unidades","Motivo","Perdida estimada S/"]].concat(D.mer.lista.map(function(m){ return [m.fecha, m.producto, m.unidad, r2(m.kg), m.motivo, r2(m.costo)]; })) }
+    { nombre:"Mermas", filas:[["Fecha","Producto","Unidad","Kg / unidades","Motivo","Perdida estimada S/"]].concat(D.mer.lista.map(function(m){ return [m.fecha, m.producto, m.unidad, r2(m.kg), m.motivo, r2(m.costo)]; })) },
+    { nombre:"Mercaderias", filas:[["Fecha","Proveedor","Producto","Kg / unidades","S/ por kg","Monto","Forma de pago","Merma al recibir","Comprobante","Registro"]].concat(D.compras.lista.map(function(c){ return [c.fecha, c.proveedor, c.producto, r2(c.kg), c.kg ? r2(c.monto/c.kg) : "", r2(c.monto), metodoLabel(metodoK(c.e.metodo)), r2(c.merma), c.e.comprobante||"", c.e.registradoPor||""]; })) },
+    { nombre:"Tinas por cliente", filas:[["Cliente","Tiene","Desde","Ultima devolucion","Salidas (total)","Devoluciones (total)"]].concat(D.tinas.porCliente.map(function(g){ return [g.cliente, g.saldo, g.desde||"", g.ultimaEntrada||"", g.salidas, g.entradas]; })) },
+    { nombre:"Tinas movimientos", filas:[["Fecha","Tipo","Cliente","Tinas","Nota","Registro"]].concat(D.tinas.lista.map(function(t){ return [t.fecha, t.tipo==="entrada" ? "Devolucion" : "Salida", t.cliente||"", Math.round(num(t.cantidad)), t.nota||"", t.registradoPor||""]; })) }
   ];
   descargarExcel("control_"+r.desde+"_"+r.hasta+".xlsx", hojas);
 }
@@ -2236,8 +2345,11 @@ function exportarPdfCon(J, D, imgs){
   if(D.porDia.length > 1){ titulo("Por dia"); tabla(["Dia","Notas","Vendido","Cobrado","Egresos","Utilidad"], D.porDia.map(function(d){ return [fechaDisplay(d[0]), String(d[1]), n2(d[2]), n2(d[3]), n2(d[9]), n2(d[10])]; }), [40,16,30,30,30,30], [1,2,3,4,5]); }
   titulo("Detalle de egresos");
   tabla(["Fecha","Categoria","Descripcion","Forma","Monto","Registro"], eg.lista.length ? eg.lista.map(function(e){ return [fechaCorta(e.fecha), e.categoria||"", (e.descripcion||"")+(e.kardex?" ["+e.kardex.producto+" "+kgTxt(e.kardex.kg)+"]":""), metodoLabel(metodoK(e.metodo)), n2(e.monto), e.registradoPor||""]; }) : [["","","(sin egresos)","","0.00",""]], [20,36,72,18,22,18], [4]);
-  if(D.k.length){ titulo("Kardex"); tabla(["Producto","Inicial","Entradas","Salidas","Ajustes","Mermas","Final","Costo prom.","Compras S/","Costo vendido"], D.k.map(function(p){ return [p.nombre, kgTxt(p.ini), kgTxt(p.entradas), kgTxt(p.salidas), kgTxt(p.ajustes), kgTxt(p.mermas), kgTxt(p.final), p.costoProm?n2(p.costoProm):"-", n2(p.costoCompra), p.costoProm?n2(p.costoVendido):"-"]; }), [40,16,17,17,16,16,16,19,20,20], [1,2,3,4,5,6,7,8,9]); }
+  if(D.k.length){ titulo("Kardex"); tabla(["Producto","Inicial","Entradas","Salidas","Ajustes","Mermas","Final","Costo prom.","Compras S/","Costo vendido"], D.k.map(function(p){ return [p.nombre, kgTxt(p.ini), kgTxt(p.entradas), kgTxt(p.salidas), kgTxt(p.ajustes), kgTxt(p.mermas), kgTxt(p.final), p.costoProm?n2(p.costoProm):"-", n2(p.costoCompra), p.costoProm?n2(p.costoVendido):"-"]; }), [38,15,16,16,15,15,15,18,19,19], [1,2,3,4,5,6,7,8,9]); }
   if(D.mer.lista.length){ titulo("Mermas (perdida estimada "+n2(D.mer.costo)+", ya incluida en compras)"); tabla(["Fecha","Producto","Kg/und","Motivo","Perdida S/"], D.mer.lista.map(function(m){ return [fechaCorta(m.fecha), m.producto, kgTxt(m.kg), m.motivo, n2(m.costo)]; }), [22,60,20,62,22], [2,4]); }
+  if(D.compras.lista.length){ titulo("Compras de mercaderia ("+n2(D.compras.total)+" - "+kgTxt(D.compras.kg)+" kg/und)"); tabla(["Fecha","Proveedor","Producto","Kg/und","S/ x kg","Monto","Merma"], D.compras.lista.map(function(c){ return [fechaCorta(c.fecha), c.proveedor, c.producto, kgTxt(c.kg), c.kg ? n2(c.monto/c.kg) : "-", n2(c.monto), c.merma ? kgTxt(c.merma) : "-"]; }), [20,52,48,18,18,20,10], [3,4,5,6]); }
+  var tinasCli = D.tinas.porCliente.filter(function(g){ return g.saldo !== 0; });
+  if(tinasCli.length || D.tinas.lista.length){ titulo("Tinas: "+D.tinas.enCalle+" en la calle"+(S.config.tinas.total ? " de "+S.config.tinas.total : "")); tabla(["Cliente","Tiene","Desde","Ultima devolucion","Salidas","Devoluciones"], tinasCli.length ? tinasCli.map(function(g){ return [g.cliente, String(g.saldo), g.desde ? fechaDisplay(g.desde) : "-", g.ultimaEntrada ? fechaDisplay(g.ultimaEntrada) : "-", String(g.salidas), String(g.entradas)]; }) : [["(nadie tiene tinas)","0","","","",""]], [70,20,30,30,18,18], [1,4,5]); }
   doc.save("control_"+r.desde+"_"+r.hasta+".pdf");
 }
 // Excel (.xlsx) sin librerias: un zip "sin comprimir" con las hojas en XML (igual que en la app).
@@ -2343,6 +2455,7 @@ function alEntrar(u){
     if(!d || d.rol !== "admin"){ UI.gateMode = "login"; UI.gateError = d ? "Esta página es solo para administradoras." : "Tu usuario no está autorizado."; UI.gateNombre = ""; firebase.auth().signOut(); renderGate(); return; }
     S.user = { id:u.uid, nombre:d.nombre || UI.gateNombre || "ADMIN", rol:"admin" }; UI.gateMode = "login";
     conectarDatos(); render();
+    if(!lsGet("tutorialVisto", false)) setTimeout(function(){ if(S.user && !document.querySelector(".overlay")) tutorialIniciar(); }, 1500);
   }).catch(function(){ UI.gateMode = "login"; UI.gateError = "No se pudo comprobar tu usuario. Revisa tu internet."; firebase.auth().signOut(); renderGate(); });
 }
 function conectarDatos(){
@@ -2391,6 +2504,7 @@ document.addEventListener("click", function(ev){
   if(action==="per-tipo"){ UI.per.tipo = val; if(val==="dia" && !UI.per.dia) UI.per.dia = todayISO(); asegurarAnios(); render(); return; }
   if(action==="tema"){ var nt = temaActual()==="dark" ? "light" : "dark"; lsSet("tema", nt); aplicarTema(nt); render(); return; }
   if(action==="ruta-hoy"){ abrirRutaHoy(); return; }
+  if(action==="ruta-cam"){ t.parentElement.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b===t); }); return; }
   if(action==="guardar-ruta-hoy"){ guardarRutaHoy(); return; }
   if(action==="vivo-3d"){ T3.on = !T3.on; lsSet("vista3d", T3.on); window.__vistaAnt = null; render(); return; }
   if(action==="vivo-tv"){ var on = !document.body.classList.contains("tv"); document.body.classList.toggle("tv", on); if(on && document.documentElement.requestFullscreen){ document.documentElement.requestFullscreen().catch(function(){}); } else if(!on && document.fullscreenElement){ document.exitFullscreen().catch(function(){}); } setTimeout(vivoLayout, 350); return; }
@@ -2424,8 +2538,18 @@ document.addEventListener("click", function(ev){
   if(action==="guardar-merma"){ guardarMerma(); return; }
   if(action==="quitar-mov"){ var mv = S.egresos[id]; if(mv && confirm("¿Quitar este movimiento del Kardex ("+(mv.tipo==="merma"?"merma":"ajuste")+" de "+kgTxt(mv.kardex?mv.kardex.kg:0)+")?")){ eliminarGasto(id, true, true); } return; }
   if(action==="guardar-ajuste"){ guardarAjuste(); return; }
-  if(action==="caja-hoy"){ UI.cajaDia = todayISO(); UI.cajaReal = ""; UI.cajaNota = ""; render(); return; }
-  if(action==="caja-ver"){ UI.cajaDia = val; UI.cajaReal = ""; UI.cajaNota = ""; render(); return; }
+  if(action==="caja-hoy"){ UI.cajaDia = todayISO(); UI.cajaReal = ""; UI.cajaNota = ""; UI.cajaConteo = null; render(); return; }
+  if(action==="caja-ver"){ UI.cajaDia = val; UI.cajaReal = ""; UI.cajaNota = ""; UI.cajaConteo = null; render(); return; }
+  if(action==="caja-contar"){ abrirConteoCaja(); return; }
+  if(action==="den-usar"){ conteoUsar(); return; }
+  if(action==="wa-cobrar"){ abrirWaCobrar(val); return; }
+  if(action==="wa-abrir"){ waAbrirDesdeModal(); return; }
+  if(action==="wa-copiar"){ var ta = document.getElementById("wa-txt"); if(ta){ ta.select(); var copiado = function(){ toast("Copiado"); }, respaldo = function(){ try{ document.execCommand("copy"); copiado(); }catch(e){ toast("Seleccione el texto y cópielo"); } }; if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(copiado, respaldo); else respaldo(); } return; }
+  if(action==="resumen-wa"){ abrirResumenWa(val==="hoy" ? null : periodo(), false); return; }
+  if(action==="tut-iniciar"){ tutorialIniciar(); return; }
+  if(action==="tut-sig"){ TUT.i++; tutorialPaso(); return; }
+  if(action==="tut-ant"){ TUT.i = Math.max(0, TUT.i-1); tutorialPaso(); return; }
+  if(action==="tut-salir"){ TUT.i = -1; tutorialPaso(); return; }
   if(action==="guardar-cierre"){ guardarCierre(); return; }
   if(action==="guardar-metas"){ guardarConfig("metas", { venta:r2(document.getElementById("meta-venta").value), utilidad:r2(document.getElementById("meta-utilidad").value) }); return; }
   if(action==="importar-archivo"){ abrirImportar(); return; }
@@ -2440,7 +2564,7 @@ document.addEventListener("click", function(ev){
   if(action==="guardar-tina"){ guardarTina(); return; }
   if(action==="eliminar-tina"){ eliminarTina(id); return; }
   if(action==="guardar-tinas-config"){ guardarConfig("tinas", { total:Math.max(0, Math.round(num(document.getElementById("tinas-total").value))) }); return; }
-  if(action==="may-agregar"){ var mc = document.getElementById("may-cliente").value.trim(), mt = r2(document.getElementById("may-tope").value); if(!mc || !(mt > 0)){ toast("Escriba el cliente y el tope"); return; } var ml = (S.config.mayoristas||[]).filter(function(x){ return normalizar(x.cliente)!==normalizar(mc); }); ml.push({ id:genId("my"), cliente:mc.toUpperCase(), tope:mt }); guardarListaConfig("mayoristas", ml, "Mayorista guardado"); return; }
+  if(action==="may-agregar"){ var mc = document.getElementById("may-cliente").value.trim(), mt = r2(document.getElementById("may-tope").value); if(!mc || !(mt > 0)){ toast("Escriba el cliente y el tope"); return; } var ml = (S.config.mayoristas||[]).filter(function(x){ return normalizar(x.cliente)!==normalizar(mc); }); ml.push({ id:genId("my"), cliente:mc.toUpperCase(), tope:mt, telefono:String((document.getElementById("may-tel")||{}).value||"").replace(/\D/g,"") }); guardarListaConfig("mayoristas", ml, "Mayorista guardado"); return; }
   if(action==="may-quitar"){ guardarListaConfig("mayoristas", (S.config.mayoristas||[]).filter(function(x){ return x.id!==id; }), "Mayorista quitado"); return; }
   if(action==="trab-agregar"){ var tn = document.getElementById("trab-nombre").value.trim(), ts = r2(document.getElementById("trab-sueldo").value), td = Math.max(1, Math.min(31, Number(document.getElementById("trab-dia").value)||30)); if(!tn || !(ts > 0)){ toast("Escriba el nombre y el sueldo"); return; } var tl = (S.config.trabajadores||[]).filter(function(x){ return normalizar(x.nombre)!==normalizar(tn); }); tl.push({ id:genId("tr"), nombre:tn.toUpperCase(), sueldo:ts, dia:td, metodo:document.getElementById("trab-metodo").value }); guardarListaConfig("trabajadores", tl, "Trabajador guardado"); return; }
   if(action==="trab-quitar"){ if(!confirm("¿Quitar este trabajador de la planilla? Los sueldos ya registrados no se borran.")) return; guardarListaConfig("trabajadores", (S.config.trabajadores||[]).filter(function(x){ return x.id!==id; }), "Trabajador quitado"); return; }
@@ -2468,14 +2592,15 @@ document.addEventListener("change", function(ev){
   else if(id==="per-hasta"){ if(el.value){ UI.per.hasta = el.value; asegurarAnios(); render(); } }
   else if(id==="gastos-cat"){ UI.gastosCat = el.value; render(); }
   else if(id==="merc-prod"){ UI.mercProd = el.value; render(); }
-  else if(id==="caja-dia"){ if(el.value){ UI.cajaDia = el.value; UI.cajaReal = ""; UI.cajaNota = ""; asegurarAnios(); cargarAnio(Number(el.value.slice(0,4)), false); render(); } }
+  else if(id==="caja-dia"){ if(el.value){ UI.cajaDia = el.value; UI.cajaReal = ""; UI.cajaNota = ""; UI.cajaConteo = null; asegurarAnios(); cargarAnio(Number(el.value.slice(0,4)), false); render(); } }
 });
 document.addEventListener("input", function(ev){
   var el = ev.target, id = el.id;
   if(id==="merc-buscar"){ UI.mercBuscar = el.value; clearTimeout(window.__mq); window.__mq = setTimeout(function(){ render(); var b = document.getElementById("merc-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
   else if(id==="gastos-buscar"){ UI.gastosBuscar = el.value; var tb = document.querySelector(".main"); clearTimeout(window.__bq); window.__bq = setTimeout(function(){ render(); var b = document.getElementById("gastos-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
-  else if(id==="caja-real"){ UI.cajaReal = el.value; clearTimeout(window.__cq); window.__cq = setTimeout(function(){ render(); var r = document.getElementById("caja-real"); if(r){ r.focus(); } }, 600); }
+  else if(id==="caja-real"){ UI.cajaReal = el.value; if(UI.cajaConteo && Math.abs(r2(el.value) - conteoTotal(UI.cajaConteo)) > 0.009) UI.cajaConteo = null; clearTimeout(window.__cq); window.__cq = setTimeout(function(){ render(); var r = document.getElementById("caja-real"); if(r){ r.focus(); } }, 600); }
   else if(id==="caja-nota"){ UI.cajaNota = el.value; }
+  else if(el.classList && el.classList.contains("den-cant")){ conteoPintar(); }
 });
 document.addEventListener("keydown", function(ev){ if(ev.key==="Escape") closeOverlay(); });
 document.addEventListener("fullscreenchange", function(){ if(!document.fullscreenElement && document.body.classList.contains("tv")){ document.body.classList.remove("tv"); } setTimeout(function(){ if(typeof vivoLayout==="function") vivoLayout(); }, 300); });
