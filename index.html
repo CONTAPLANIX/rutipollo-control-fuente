@@ -194,6 +194,8 @@
   #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
   .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
   .vivo-zonas{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .vivo-cargando{ display:flex; align-items:center; justify-content:center; height:min(58vw, 460px); border-radius:10px; background:linear-gradient(180deg, #cfe6f7, #eaf3fa); color:#1f4f7a; font-weight:600; font-size:15px; }
+  body.oscuro .vivo-cargando{ background:linear-gradient(180deg, #1b2a44, #2b3f63); color:#dde4ee; }
   @media (max-width:760px){ .vivo-zona-card{ top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46%; font-size:12.5px; padding:8px 10px; } }
   .btn.wa{ border-color:#25d366; color:#128c4a; } .btn.wa .ic svg{ stroke:#128c4a; } .btn.wa:hover{ background:#e9fbef; }
   .den-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; } @media (max-width:480px){ .den-grid{ grid-template-columns:1fr; } }
@@ -328,7 +330,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C31";
+var APP_VERSION = "25 oct · C32";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1251,8 +1253,8 @@ var ZONAS = [
   { id:"camara", nombre:"Cámara", ico:"frio", box:[2.0,1.1,1.5, 3.7,2.3,2.7], foco:[2.4,0.8,1.8], dist:9.5 },
   { id:"vitrina", nombre:"Vitrina", ico:"vitrina", box:[0.7,0.7,5.6, 1.1,1.5,4.4], foco:[1.0,0.6,5.6], dist:8.5 },
   { id:"almacen", nombre:"Almacén", ico:"almacen", box:[10.6,0.95,1.9, 2.4,1.9,1.5], foco:[10.6,0.8,1.9], dist:7.5 },
-  { id:"camion1", nombre:"Camión 1", ico:"camion", box:[5.2,0.75,9.45, 3.4,1.7,1.6], foco:[5.2,0.5,9.4], dist:8.5, camion:0 },
-  { id:"camion2", nombre:"Camión 2", ico:"camion", box:[10.4,0.75,9.45, 3.4,1.7,1.6], foco:[10.4,0.5,9.4], dist:8.5, camion:1 },
+  { id:"camion1", nombre:"Camión 1", ico:"camion", box:[1.6,0.75,9.45, 3.4,1.7,1.6], foco:[1.6,0.5,9.4], dist:8.5, camion:0 },
+  { id:"camion2", nombre:"Camión 2", ico:"camion", box:[9.6,0.75,9.45, 3.4,1.7,1.6], foco:[9.6,0.5,9.4], dist:8.5, camion:1 },
   { id:"marcador", nombre:"Ranking", ico:"trofeo", box:[9.6,1.95,0.12, 3.5,1.5,0.3], foco:[9.6,1.6,0.6], dist:7 }
 ];
 function vivo3dZonasCrear(sc, gl){
@@ -1484,7 +1486,7 @@ function vivoPaso(ts){
     VIVO.camiones = VIVO.camiones.filter(function(c){ return c.viva; }); VIVO.camiones.forEach(function(c){ moverCamion(c, dt); });
     procesarCola(ts);
     ambiente(dt); moverMascotas(dt);
-    if(VIVO.modo==="3d" && T3.listo) vivo3dRender(dt); else vivoDibujar(dt);
+    if(VIVO.modo==="3d"){ if(T3.listo) vivo3dRender(dt); } else vivoDibujar(dt);
   }
 }
 function moverMoto(m, dt){
@@ -1492,7 +1494,7 @@ function moverMoto(m, dt){
   if(m.fuera){ m.t += dt; if(m.t < 2.2){ m.x += 4*dt; } else if(m.t < m.dur){ m.x = 20; } else if(m.t < m.dur + (m.px + 4)/4 + 0.4){ if(m.x > 19) m.x = -4; m.x += 4*dt; if(m.x >= m.px){ m.x = m.px; m.fuera = false; } } else { m.x = m.px; m.fuera = false; } }
 }
 function moverCamion(c, dt){
-  c.t += dt; if(c.fase===0){ c.x += 3.2*dt; if(c.x >= 1.5){ c.fase = 1; c.t = 0; } } else if(c.fase===1){ if(c.t > 2.6){ c.fase = 2; c.texto = null; } } else { c.x += 3.4*dt; if(c.x > 17) c.viva = false; }
+  c.t += dt; if(c.fase===0){ c.x += 3.2*dt; if(c.x >= 6.5){ c.fase = 1; c.t = 0; } } else if(c.fase===1){ if(c.t > 2.6){ c.fase = 2; c.texto = null; } } else { c.x += 3.4*dt; if(c.x > 17) c.viva = false; }
 }
 var COLORES_ROPA = ["#2f6fb3","#c23b2c","#1d7a3e","#742284","#b26a00","#049a91","#5c6f88","#d14f02"];
 function clienteCompra(ev){
@@ -1505,12 +1507,12 @@ function clienteCompra(ev){
   function celebra(){ if(ev.celebra) setTimeout(function(){ celebrar(ev.celebra, /grande/.test(ev.celebra) ? "monedas" : "confeti"); }, 300); }
   if(enRuta){
     // Venta en ruta: el cliente llega por la vereda hasta el camion, paga ahi y el camion sigue su ruta.
-    var tx = moto.px, puesto = { x:tx - 0.9, y:8.75 };
-    nuevaPersona({ x:tx - 3.2, y:8.7, color:color, piel:piel, ruta:[puesto], acciones:[
+    var tx = moto.px, puesto = { x:tx + 1.5, y:8.3 };
+    nuevaPersona({ x:tx + 5.0, y:8.3, color:color, piel:piel, ruta:[puesto], acciones:[
       { espera:1.3, bubble:(v.cliente||"Cliente").slice(0,22), fn:function(pp){ var r = (VIVO.ruteros||[]).find(function(x){ return normalizar(x.nombre)===normalizar(v.vendedor||""); }) || (VIVO.ruteros||[])[0]; if(r && !r.oculto){ r.bubble = "¡Buenas! ¿Qué va a llevar?"; r.espera = 1.6; } } },
       { espera:1.1, bubble:resumenItems(v.items).slice(0,30), fn:function(pp){ pp.bolsa = true; } },
-      { espera:1.0, bubble:textoPago, color:pendiente ? "#c23b2c" : "#1d7a3e", fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20, null, null, tx, 9.3); }, i*90); } efecto("texto", tx, 9.3, 50, "En ruta · N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); celebra(); } },
-      { ruta:[{ x:tx - 3.6, y:8.7 }] }
+      { espera:1.0, bubble:textoPago, color:pendiente ? "#c23b2c" : "#1d7a3e", fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20, null, null, tx + 2.3, 8.45); }, i*90); } efecto("texto", tx + 2.3, 8.45, 50, "En ruta · N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); celebra(); } },
+      { ruta:[{ x:tx + 5.2, y:8.3 }] }
     ], alTerminar:function(pp){ pp.viva = false; if(!moto.fuera){ moto.fuera = true; moto.t = 0; moto.dur = 6 + Math.random()*4; moto.quien = v.vendedor||""; } } });
     return;
   }
@@ -1539,7 +1541,7 @@ function ambiente(dt){
   if(!w.ruta.length && !w.espera && !w.acciones.length){ VIVO.tOcio = (VIVO.tOcio||0) + dt; if(VIVO.tOcio > 7 + Math.random()*8){ VIVO.tOcio = 0; w.acciones = [ { ruta:[{x:2.4,y:3.4},{x:2.4,y:3.1}] }, { espera:1.2 }, { ruta:[{x:4.9,y:3.4}] } ]; } }
 }
 function vivoReconstruirMotos(){
-  VIVO.motos = [{ nombre:"REPARTO 1", quien:"", chofer:"", x:5.2, px:5.2, y:9.45, color:"#2a78d6", fuera:false, t:0, dur:0 }, { nombre:"REPARTO 2", quien:"", chofer:"", x:10.4, px:10.4, y:9.45, color:"#1baf7a", fuera:false, t:0, dur:0 }];
+  VIVO.motos = [{ nombre:"REPARTO 1", quien:"", chofer:"", x:1.6, px:1.6, y:9.45, color:"#2a78d6", fuera:false, t:0, dur:0 }, { nombre:"REPARTO 2", quien:"", chofer:"", x:9.6, px:9.6, y:9.45, color:"#1baf7a", fuera:false, t:0, dur:0 }];
 }
 function camionDe(vendedor){
   var r = (VIVO.ruteros||[]).find(function(x){ return normalizar(x.nombre)===normalizar(vendedor||""); });
@@ -1553,7 +1555,7 @@ function vivoRuteros(){
   (VIVO.ruteros||[]).forEach(function(c){ c.viva = false; }); VIVO.ruterosClave = clave; VIVO.motos.forEach(function(m){ m.chofer = ""; });
   var cam = camionesHoy(), porCamion = {};
   VIVO.ruteros = ruta.map(function(n, i){ var nm = VIVO.motos.length || 1, ci = cam[normalizar(n)] !== undefined ? Math.min(nm-1, Math.max(0, Number(cam[normalizar(n)]))) : i % nm, m = VIVO.motos[ci] || { px:5.2 }; if(m) m.chofer = m.chofer ? m.chofer+" + "+n : n; var k = porCamion[ci] || 0; porCamion[ci] = k+1;
-    var pr = nuevaPersona({ x:m.px + 1.5 + k*0.7, y:9.0, color:ci===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; pr.camion = ci; return pr; });
+    var pr = nuevaPersona({ x:m.px + 2.3 + k*0.7, y:8.45, color:ci===0 ? "#2a78d6" : "#1baf7a", pelo:"#1a1a1a", nombre:n }); pr.rutero = true; pr.mirando = -1; pr.camion = ci; return pr; });
 }
 function vivoCajeros(){
   var admins = (S.usuarios||[]).filter(function(u){ return u.rol==="admin" && u.nombre && !enRutaHoy(u.nombre); }).map(function(u){ return String(u.nombre); }).sort();
@@ -1634,8 +1636,8 @@ function vivoMontar(){
   VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO"; VIVO.montadoEn = Date.now(); if(lsGet("cierreAnim", "") === todayISO()) VIVO.cerradoDia = todayISO();
   var glAnt = document.getElementById("vivo-gl"); if(glAnt) glAnt.style.display = "none"; c.style.display = "";
   vivo3dReset(); VIVO.modo = "2d"; vivoLayout();
-  if(T3.on && hayWebGL()){ VIVO.modo = "3d"; var est0 = document.getElementById("vivo-estado"); if(est0) est0.textContent = "Cargando la vista 3D…";
-    cargarThree().then(function(){ if(!document.body.contains(c) || VIVO.modo !== "3d") return; vivo3dInit(); var est1 = document.getElementById("vivo-estado"); if(est1) est1.textContent = "Conectado · se actualiza solo"; }).catch(function(e){ console.error(e); VIVO.modo = "2d"; vivoLayout(); toast("No se pudo cargar la vista 3D; se usa el dibujo clásico"); }); }
+  if(T3.on && hayWebGL()){ VIVO.modo = "3d"; c.style.display = "none"; var cargando = document.createElement("div"); cargando.className = "vivo-cargando"; cargando.textContent = "Cargando la vista 3D…"; c.parentElement.insertBefore(cargando, c); var est0 = document.getElementById("vivo-estado"); if(est0) est0.textContent = "Cargando la vista 3D…";
+    cargarThree().then(function(){ var cg = document.querySelector(".vivo-cargando"); if(cg) cg.remove(); if(!document.body.contains(c) || VIVO.modo !== "3d") return; vivo3dInit(); var est1 = document.getElementById("vivo-estado"); if(est1) est1.textContent = "Conectado · se actualiza solo"; }).catch(function(e){ console.error(e); var cg2 = document.querySelector(".vivo-cargando"); if(cg2) cg2.remove(); c.style.display = ""; VIVO.modo = "2d"; vivoLayout(); toast("No se pudo cargar la vista 3D; se usa el dibujo clásico"); }); }
   VIVO.personas = []; VIVO.cajeros = []; VIVO.cajerosClave = ""; VIVO.ruteros = []; VIVO.ruterosClave = "";
   vivoReconstruirMotos(); vivoCajeros(); vivoRuteros();
   VIVO.vistos = null; VIVO.cola = []; VIVO.efectos = []; VIVO.camiones = [];
@@ -2519,6 +2521,7 @@ function alEntrar(u){
     if(!d || d.rol !== "admin"){ UI.gateMode = "login"; UI.gateError = d ? "Esta página es solo para administradoras." : "Tu usuario no está autorizado."; UI.gateNombre = ""; firebase.auth().signOut(); renderGate(); return; }
     S.user = { id:u.uid, nombre:d.nombre || UI.gateNombre || "ADMIN", rol:"admin" }; UI.gateMode = "login";
     conectarDatos(); render();
+    if(T3.on && hayWebGL()) cargarThree().catch(function(){}); // precarga el 3D para que "En vivo" abra al instante
     if(!lsGet("tutorialVisto", false)) setTimeout(function(){ if(S.user && !document.querySelector(".overlay")) tutorialIniciar(); }, 1500);
   }).catch(function(){ UI.gateMode = "login"; UI.gateError = "No se pudo comprobar tu usuario. Revisa tu internet."; firebase.auth().signOut(); renderGate(); });
 }
