@@ -98,6 +98,9 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
 - C37 (25-oct-2026): mascotas solo por zonas libres (`ZONAS_MASC` frente/derecha/atrás conectadas por solapes, `rutaMascota`, `SUBIDAS` para
   subir al mostrador/vitrina/jabas) y paseo natural (destinos al azar en las zonas, curva suave `m.curva`, ritmo `m.vel`, olfateos `m.olfateo`,
   giro suave `m.ang`). Simulación en node: 3 min sin pisar muebles.
+- C38 (25-oct-2026): GSAP 3.13.0 + DrawSVGPlugin (cdnjs) para que la línea del recorrido se dibuje parada por parada (`animarRecorrido`,
+  `gsapListo`, botón "Ver de nuevo" `rec-animar`; también en el mini mapa). Respeta prefers-reduced-motion; sin GSAP la línea sale completa.
+  Las skills oficiales de GSAP (greensock/gsap-skills) están instaladas en `~/.claude/skills/gsap-*`: leerlas antes de escribir animaciones.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
