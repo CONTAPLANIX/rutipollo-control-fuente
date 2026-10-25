@@ -194,6 +194,12 @@
   #vivo-canvas{ width:100%; display:block; border-radius:10px; background:#cfe6f7; }
   .vivo-bar{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
   .vivo-zonas{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .replay-barra{ display:flex; align-items:center; gap:10px; margin:8px 0 2px; padding:6px 10px; border:1px solid var(--accent); border-radius:10px; background:var(--paper-raised); font-size:12.5px; }
+  .replay-barra .rp-hora{ font-family:"IBM Plex Mono",monospace; font-weight:700; min-width:64px; } .replay-barra .rp-track{ flex:1; height:8px; background:var(--paper-alt); border-radius:4px; overflow:hidden; } .replay-barra .rp-fill{ height:100%; width:0; background:var(--accent); transition:width .2s linear; }
+  .vivo-horas{ margin-top:8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--paper-raised); } .horas-head{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft); margin-bottom:4px; } .horas-svg{ width:100%; height:auto; display:block; }
+  .mini-ruta{ height:150px; border-radius:8px; overflow:hidden; margin-bottom:8px; background:var(--paper-alt); } .mini-camion{ font-size:20px; line-height:26px; text-align:center; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  .vol-wrap{ display:inline-flex; align-items:center; gap:4px; font-size:13px; } .vol-wrap input{ width:80px; }
+  body.tv .vivo-horas, body.tv .replay-barra{ display:none !important; }
   .vivo-cargando{ display:flex; align-items:center; justify-content:center; height:min(58vw, 460px); border-radius:10px; background:linear-gradient(180deg, #cfe6f7, #eaf3fa); color:#1f4f7a; font-weight:600; font-size:15px; }
   body.oscuro .vivo-cargando{ background:linear-gradient(180deg, #1b2a44, #2b3f63); color:#dde4ee; }
   @media (max-width:760px){ .vivo-zona-card{ top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46%; font-size:12.5px; padding:8px 10px; } }
@@ -330,7 +336,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C35";
+var APP_VERSION = "25 oct · C36";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -821,7 +827,7 @@ function mapsLink(u){ return u && u.lat ? "https://maps.google.com/?q="+u.lat+",
 function resumenItems(items){ return (items||[]).map(function(it){ var kg = num(it.kg) > 0 ? kgTxt(it.kg)+" kg" : kgTxt(it.cantidad)+" und"; return kg+" "+String(it.producto||"").toLowerCase(); }).join(", "); }
 function haceTxt(ms){ var s = Math.max(0, Math.round((Date.now()-ms)/1000)); if(s < 60) return "hace un momento"; var m = Math.round(s/60); if(m < 60) return "hace "+m+" min"; var h = Math.floor(m/60); return "hace "+h+" h "+(m%60)+" min"; }
 
-var VIVO = { modo:"2d", sonido:lsGet("sonido", false), audio:null, canvas:null, ctx:null, raf:0, tAnt:0, vistos:null, abonos:{}, cola:[], personas:[], efectos:[], camiones:[], motos:[], trabajador:null, stockCajas:4, stockKg:0, feed:[], w:0, h:0, esc:1, ox:0, oy:0, ventilador:0, ultimaSpawn:0, primerMontaje:true, nombreLocal:"" };
+var VIVO = { modo:"2d", sonido:lsGet("sonido", false), volumen:lsGet("volumen", 0.55), audio:null, canvas:null, ctx:null, raf:0, tAnt:0, vistos:null, abonos:{}, cola:[], personas:[], efectos:[], camiones:[], motos:[], trabajador:null, stockCajas:4, stockKg:0, feed:[], w:0, h:0, esc:1, ox:0, oy:0, ventilador:0, ultimaSpawn:0, primerMontaje:true, nombreLocal:"" };
 var ISO = { tw:64, th:32, cols:12, filas:9 };
 var ISO_W = 880, ISO_H = 500;
 var PAL = { piso1:"#e9dcc6", piso2:"#e1d2b8", calle:"#5d6572", vereda:"#b9b3a6", pared:"#f3ece0", paredL:"#d9cfbf", paredR:"#c7bba9", frio:"#8fc7e8", frioL:"#6fb0d8", frioR:"#5c9ac2", caja:"#c98b4b", cajaL:"#a86e36", cajaR:"#8c5a2b", mostr:"#f76204", mostrL:"#d14f02", mostrR:"#a83f02", metal:"#aeb6bf", metalL:"#8d96a0", metalR:"#6f7882", pollo:"#f6d7b0" };
@@ -1123,9 +1129,20 @@ function vivo3dInit(){
   var pared = m3(0xf1ebe0, { rough:0.95, env:0.3 }); caja(12.3, 3, 0.25, 0xf1ebe0, 6, 1.5, -0.12, { mat:pared }); caja(0.25, 3, 8.3, 0xf1ebe0, -0.12, 1.5, 4, { mat:pared });
   caja(3.9, 1.0, 0.22, 0xf1ebe0, 1.95, 0.5, 7.95, { mat:pared }); caja(6.4, 1.0, 0.22, 0xf1ebe0, 8.8, 0.5, 7.95, { mat:pared });
   caja(12.3, 0.08, 0.5, 0xf76204, 6, 3.04, 0.05, { sombra:false }); // viga naranja superior
+  // ventanas de vidrio sobre los muros bajos del frente y puerta de vidrio de dos hojas
+  var vidrioMat = function(){ var mv = new THREE.MeshPhysicalMaterial({ color:0xdff1fb, roughness:0.05, metalness:0, transmission:0.85, thickness:0.05, ior:1.45, envMapIntensity:1.0, transparent:true, opacity:0.9 }); return mv; };
+  var v1 = new THREE.Mesh(new THREE.BoxGeometry(3.9, 1.9, 0.05), vidrioMat()); v1.userData.envFijo = true; v1.position.set(1.95, 1.95, 7.95); sc.add(v1);
+  var v2 = new THREE.Mesh(new THREE.BoxGeometry(6.4, 1.9, 0.05), vidrioMat()); v2.userData.envFijo = true; v2.position.set(8.8, 1.95, 7.95); sc.add(v2);
+  [[1.95, 3.9], [8.8, 6.4]].forEach(function(q){ caja(q[1], 0.06, 0.08, 0x8d98a4, q[0], 2.9, 7.95, { metal:0.6, rough:0.4 }); caja(q[1], 0.06, 0.08, 0x8d98a4, q[0], 1.0, 7.95, { metal:0.6, rough:0.4 }); });
+  T3.puertaI = new THREE.Group(); T3.puertaI.position.set(3.9, 0, 7.95); var hojaI = new THREE.Mesh(new THREE.BoxGeometry(0.82, 2.2, 0.04), vidrioMat()); hojaI.userData.envFijo = true; hojaI.position.set(0.42, 1.1, 0); T3.puertaI.add(hojaI); caja(0.04, 2.2, 0.06, 0x8d98a4, 0.83, 1.1, 0, { padre:T3.puertaI, metal:0.6, rough:0.4 }); sc.add(T3.puertaI);
+  T3.puertaD = new THREE.Group(); T3.puertaD.position.set(5.6, 0, 7.95); var hojaD = new THREE.Mesh(new THREE.BoxGeometry(0.82, 2.2, 0.04), vidrioMat()); hojaD.userData.envFijo = true; hojaD.position.set(-0.42, 1.1, 0); T3.puertaD.add(hojaD); caja(0.04, 2.2, 0.06, 0x8d98a4, -0.83, 1.1, 0, { padre:T3.puertaD, metal:0.6, rough:0.4 }); sc.add(T3.puertaD);
+  caja(1.9, 0.06, 0.08, 0x8d98a4, 4.75, 2.22, 7.95, { metal:0.6, rough:0.4 });
   // letrero
   var tl = texturaTexto(VIVO.nombreLocal || CFG.nombre.toUpperCase(), { size:64, bold:true, font:"'Anton', 'Arial Narrow', sans-serif", color:"#ffffff", fondo:"#f76204" });
   T3.letrero = new THREE.Mesh(new THREE.PlaneGeometry(tl.userData.w/150, tl.userData.h/150), new THREE.MeshStandardMaterial({ map:tl, emissive:0xffffff, emissiveMap:tl, emissiveIntensity:0.15, roughness:0.6 })); T3.letrero.position.set(5.2, 2.5, 0.02); sc.add(T3.letrero);
+  // meta del dia en la pared izquierda
+  T3.metaCanvas = document.createElement("canvas"); T3.metaCanvas.width = 512; T3.metaCanvas.height = 160; T3.metaTex = new THREE.CanvasTexture(T3.metaCanvas); T3.metaTex.colorSpace = THREE.SRGBColorSpace;
+  var mt = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.81), new THREE.MeshStandardMaterial({ map:T3.metaTex, emissive:0xffffff, emissiveMap:T3.metaTex, emissiveIntensity:0.35, roughness:0.5 })); mt.position.set(0.02, 2.3, 5.6); mt.rotation.y = Math.PI/2; sc.add(mt);
   // marcador de vendedores
   T3.marcadorCanvas = document.createElement("canvas"); T3.marcadorCanvas.width = 512; T3.marcadorCanvas.height = 220; T3.marcadorTex = new THREE.CanvasTexture(T3.marcadorCanvas); T3.marcadorTex.colorSpace = THREE.SRGBColorSpace;
   var mk = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.46), new THREE.MeshStandardMaterial({ map:T3.marcadorTex, emissive:0xffffff, emissiveMap:T3.marcadorTex, emissiveIntensity:0.35, roughness:0.5 })); mk.position.set(9.6, 1.95, 0.02); sc.add(mk);
@@ -1171,7 +1188,18 @@ function vivo3dCielo(dt){
   var noche = !esSol || f < 0.06 || f > 0.94, luzDia = esSol ? Math.min(1, Math.sin(ang)*1.6) : 0;
   T3.hemi.intensity = 0.08 + luzDia*0.5; T3.amb.intensity = noche ? 0.12 : 0.04; T3.estrellas.material.opacity = noche ? 0.9 : 0;
   T3.interior.forEach(function(l){ l.intensity = noche ? 14 : 2; }); T3.scene.traverse(function(o){ if(o.isMesh && o.material && o.material.envMapIntensity !== undefined && !o.userData.envFijo){ o.material.envMapIntensity = noche ? 0.1 : 0.65; } }); T3.letrero.material.emissiveIntensity = noche ? 1.0 : 0.15; T3.scene.fog.color.set(cs[1]);
-  NUBES.forEach(function(n, i){ var sp = T3.nubes[i]; sp.position.x = -14 + n.x*34; sp.material.opacity = noche ? 0.25 : 0.85; });
+  var cf = climaFactor(); NUBES.forEach(function(n, i){ var sp = T3.nubes[i]; sp.position.x = -14 + n.x*34; sp.material.opacity = (noche ? 0.25 : 0.85)*Math.min(1, cf.nubes); sp.scale.set(7*n.e*Math.max(0.8, cf.nubes), 3.5*n.e*Math.max(0.8, cf.nubes), 1); });
+  if(cf.gris > 0){ T3.sol.intensity *= (1 - cf.gris*0.7); T3.hemi.intensity *= (1 - cf.gris*0.3); T3.scene.fog.color.lerp(new THREE.Color(0x9aa5b1), cf.gris); }
+}
+function vivo3dMeta(){
+  var c = T3.metaCanvas; if(!c) return; var ctx = c.getContext("2d"); var E = vivoEstadoHoy(), vend = E.ing.vendido, meta = (S.config.metas.venta > 0) ? S.config.metas.venta/ultimoDia(hp.anio, hp.mes) : 0;
+  ctx.fillStyle = "#15202c"; ctx.fillRect(0,0,c.width,c.height); ctx.strokeStyle = "#f5c242"; ctx.lineWidth = 6; ctx.strokeRect(3,3,c.width-6,c.height-6);
+  ctx.font = "400 30px 'Anton', 'Arial Narrow', sans-serif"; ctx.fillStyle = "#f5c242"; ctx.textAlign = "left"; ctx.fillText("META DEL DÍA", 22, 44);
+  if(!meta){ ctx.font = "600 22px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#dde4ee"; ctx.fillText("Ponga la meta del mes en Ajustes", 22, 100); T3.metaTex.needsUpdate = true; return; }
+  var k = Math.min(1, vend/meta); VIVO.metaAnim = (VIVO.metaAnim===undefined ? 0 : VIVO.metaAnim) + (k - (VIVO.metaAnim||0))*0.08;
+  ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(22, 70, c.width-44, 34); ctx.fillStyle = k >= 1 ? "#1baf7a" : "#f76204"; ctx.fillRect(22, 70, (c.width-44)*VIVO.metaAnim, 34);
+  ctx.font = "700 24px 'IBM Plex Sans', sans-serif"; ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.fillText(fmt(vend), 22, 140); ctx.textAlign = "right"; ctx.fillText((k*100).toFixed(0)+"% de "+fmt(meta), c.width-22, 140);
+  T3.metaTex.needsUpdate = true;
 }
 function vivo3dMarcador(){
   var c = T3.marcadorCanvas, ctx = c.getContext("2d"), lista = VIVO.marcador||[]; ctx.fillStyle = "#15202c"; ctx.fillRect(0,0,c.width,c.height); ctx.strokeStyle = "#f76204"; ctx.lineWidth = 6; ctx.strokeRect(3,3,c.width-6,c.height-6);
@@ -1274,7 +1302,9 @@ function vivo3dZonasAnimar(ahora){
   var pulso = 0.5 + 0.5*Math.sin(ahora*4);
   (T3.zonas||[]).forEach(function(q){ var id = q.z.id, hov = T3.hover===id, act = VIVO.zonaActiva===id, al = !!(VIVO.zonaAlerta||{})[id];
     q.borde.material.opacity = hov || act ? 0.95 : al ? 0.3 + pulso*0.6 : 0; q.borde.material.color.setHex(al && !hov && !act ? 0xe34948 : 0xf76204);
-    q.mesh.material.opacity = hov ? 0.14 : act ? 0.07 : al ? 0.03 + pulso*0.07 : 0; });
+    q.mesh.material.opacity = hov ? 0.14 : act ? 0.07 : al ? 0.03 + pulso*0.07 : 0;
+    var txt = (VIVO.zonaAvisoTxt||{})[id] || ""; if(txt !== (q.avisoTxt||"")){ q.avisoTxt = txt; if(q.aviso){ T3.scene.remove(q.aviso); q.aviso = null; } if(txt){ q.aviso = spriteTexto(txt.slice(0, 48), { size:30, bold:true, color:"#ffffff", fondo:"rgba(194,59,44,.95)" }); q.aviso.position.set(q.z.box[0], q.z.box[1] + q.z.box[4]/2 + 0.55, q.z.box[2]); T3.scene.add(q.aviso); } }
+    if(q.aviso) q.aviso.material.opacity = 0.55 + pulso*0.45; });
 }
 function vivoZona(id){
   var z = ZONAS.find(function(x){ return x.id===id; }); if(!z) return;
@@ -1282,11 +1312,16 @@ function vivoZona(id){
   vivoZonaPintar();
 }
 function vivoZonaCerrar(){ VIVO.zonaActiva = null; T3.foco = null; vivoZonaPintar(); }
-function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; cargarDirecciones(); document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
+function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop;
+  var zc = ZONAS.find(function(x){ return x.id===id; }); var ci = zc && zc.camion !== undefined ? zc.camion : -1; var key = ci >= 0 ? id+"|"+ventasCamion(ci).length+"|"+!!(VIVO.motos[ci]||{}).fuera+"|"+((VIVO.motos[ci]||{}).chofer||"") : "";
+  if(ci >= 0 && key === MINI.key && document.getElementById("mini-ruta")){ return; }
+  c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; cargarDirecciones(); MINI.key = key; if(ci >= 0) montarMiniRuta(ci); else { if(MINI.mapa){ try{ MINI.mapa.remove(); }catch(e){} MINI.mapa = null; } if(MINI.timer){ clearInterval(MINI.timer); MINI.timer = 0; } } document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
 function vivoZonasBarHtml(){ return '<div class="vivo-zonas">'+ZONAS.map(function(z){ return '<button data-action="vivo-zona" data-val="'+z.id+'" class="'+(VIVO.zonaActiva===z.id?'on':'')+'" title="Ver '+z.nombre+'"><span class="ic">'+ico(z.ico)+'</span><span>'+z.nombre+'</span></button>'; }).join("")+'</div>'; }
+function sinHtml(h){ var ta = document.createElement("textarea"); ta.innerHTML = String(h||"").replace(/<[^>]+>/g, ""); return ta.value; }
 function vivoZonasAlertas(){
   var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion1 = true; });
   if(stockAlmacen().some(function(p){ return S.config.alertas.stockMin > 0 && p.final < S.config.alertas.stockMin; })) z.almacen = true; VIVO.zonaAlerta = z;
+  var tx = {}; al.forEach(function(a){ var t = sinHtml(a.txt); if(a.tipo==="stock" && !tx.camara) tx.camara = "⚠ "+t; if(a.tipo==="tinas" && !tx.camion1) tx.camion1 = "⚠ "+t; if(a.tipo==="tope" && !tx.caja) tx.caja = "⚠ "+t; if(a.tipo==="caja" && !tx.caja) tx.caja = "⚠ "+t; }); VIVO.zonaAvisoTxt = tx;
 }
 function zonaInfoHtml(id){
   var z = ZONAS.find(function(x){ return x.id===id; }); var E = vivoEstadoHoy(), ing = E.ing, eg = E.eg, f = E.f, body = "";
@@ -1299,7 +1334,7 @@ function zonaInfoHtml(id){
   else if(id==="camion1" || id==="camion2"){ var m = VIVO.motos[z.camion] || {}; var tn = calcTinas({ desde:f, hasta:f });
     var enRuta = ventasCamion(z.camion); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
     var otro = VIVO.motos[z.camion ? 0 : 1];
-    body = '<ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;"><div class="kard-sub" style="margin-bottom:4px;">Paradas de hoy (hacia dónde fue):</div>'+paradasHtml(enRuta)+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
+    body = '<div id="mini-ruta" class="mini-ruta"></div><ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;"><div class="kard-sub" style="margin-bottom:4px;">Paradas de hoy (hacia dónde fue):</div>'+paradasHtml(enRuta)+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
       + '<div class="actions-row" style="justify-content:flex-start;">'+(enRuta.some(function(v){ return v.ubicacion && num(v.ubicacion.lat); }) ? '<button class="btn btn-sm btn-primary" data-action="recorrido" data-val="'+z.camion+'">Ver recorrido en el mapa</button>' : '')+'<button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button><button class="btn btn-sm" data-action="recorridos" data-val="'+todayISO()+'">Otros días</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
   else if(id==="marcador"){ body = podioHtml(VIVO.marcador||[]); }
   return '<div class="zc-head"><span class="ic">'+ico(z.ico)+'</span><strong>'+z.nombre+'</strong><span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="vivo-zona-cerrar" title="Cerrar">✕</button></div>'+body;
@@ -1388,8 +1423,9 @@ function vivo3dRender(dt){
   NUBES.forEach(function(n, i){ T3.nubes[i].position.x = -14 + n.x*34; });
   T3.ventilador.rotation.z += dt*7; vivo3dCrates(); vivo3dProductos();
   if(T3.persiana){ var cerrado = VIVO.cerradoDia === todayISO(); var yObj = cerrado ? 0.0 : 3.05; T3.persianaY += (yObj - T3.persianaY)*Math.min(1, dt*1.2); T3.persiana.position.y = T3.persianaY; T3.persiana.visible = T3.persianaY < 2.9; T3.persiana.children.forEach(function(ch, i){ ch.visible = (T3.persianaY + 0.16 + i*0.32) < 2.85; }); if(cerrado !== T3.cerradoAnt){ T3.cerradoAnt = cerrado; T3.interior.forEach(function(l){ l.intensity = cerrado ? 0.6 : (esNoche() ? 14 : 2); }); } }
-  if(ahora - T3.marcadorT > 0.25){ T3.marcadorT = ahora; vivo3dMarcador(); }
-  var ab = !!VIVO.abierto; if(ab !== T3.abiertoAnt){ T3.abiertoAnt = ab; if(T3.abiertoM) sc.remove(T3.abiertoM); T3.abiertoM = spriteTexto(ab ? "ABIERTO" : "CERRADO", { size:34, bold:true, color:"#ffffff", fondo:ab ? "#1d7a3e" : "#c23b2c" }); T3.abiertoM.position.set(4.75, 1.25, 7.95); sc.add(T3.abiertoM); }
+  if(ahora - T3.marcadorT > 0.25){ T3.marcadorT = ahora; vivo3dMarcador(); vivo3dMeta(); }
+  vivo3dPuerta(dt); vivo3dLluvia(dt);
+  var ab = !!VIVO.abierto; if(ab !== T3.abiertoAnt){ T3.abiertoAnt = ab; if(T3.abiertoM) sc.remove(T3.abiertoM); T3.abiertoM = spriteTexto(ab ? "ABIERTO" : "CERRADO", { size:34, bold:true, color:"#ffffff", fondo:ab ? "#1d7a3e" : "#c23b2c" }); T3.abiertoM.position.set(4.75, 2.55, 8.1); sc.add(T3.abiertoM); }
   T3.pantalla.material.emissiveIntensity = 0.8 + Math.max(0, VIVO.cajaBrillo||0)*2.5; T3.caja.material.emissive.setHex(VIVO.cajaBrillo > 0 ? 0xf5c242 : 0x000000); T3.caja.material.emissiveIntensity = Math.max(0, VIVO.cajaBrillo||0);
   // personas
   var vivas = {}; VIVO.personas.forEach(function(p){ var g = vivo3dPersona(p); vivas[g.uuid] = 1; g.visible = !p.oculto; g.position.set(p.x, 0, p.y); if(p.rutero && !p.ruta.length) g.rotation.y = Math.PI*0.75; var mov = p.ruta.length && !p.espera; var osc = Math.sin(p.paso)*0.35;
@@ -1421,9 +1457,18 @@ function vivo3dRender(dt){
   var dir = new THREE.Vector3(0.72, 0.7, 0.8).normalize(); T3.cam.position.copy(T3.target).addScaledVector(dir, T3.dist); T3.cam.lookAt(T3.target);
   T3.renderer.render(sc, T3.cam);
 }
+function vivo3dLluvia(dt){
+  var cf = climaFactor(); if(!cf.lluvia){ if(T3.lluvia){ T3.lluvia.visible = false; } return; }
+  if(!T3.lluvia){ var n = 500, pos = new Float32Array(n*3); for(var i=0;i<n;i++){ pos[i*3] = -6 + Math.random()*26; pos[i*3+1] = Math.random()*9; pos[i*3+2] = -4 + Math.random()*18; } var g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); T3.lluvia = new THREE.Points(g, new THREE.PointsMaterial({ color:0xbfd4e6, size:0.06, transparent:true, opacity:0.7, depthWrite:false })); T3.scene.add(T3.lluvia); }
+  T3.lluvia.visible = true; var arr = T3.lluvia.geometry.attributes.position.array; for(var j=1;j<arr.length;j+=3){ arr[j] -= dt*7; if(arr[j] < 0) arr[j] = 9; } T3.lluvia.geometry.attributes.position.needsUpdate = true;
+}
+function vivo3dPuerta(dt){
+  if(!T3.puertaI) return; var cerca = VIVO.personas.some(function(p){ return p.viva && !p.oculto && Math.abs(p.x - 4.75) < 1.1 && p.y > 7.2 && p.y < 9.4; });
+  var obj = cerca ? 1.35 : 0; T3.puertaAng = (T3.puertaAng||0) + (obj - (T3.puertaAng||0))*Math.min(1, dt*4); T3.puertaI.rotation.y = -T3.puertaAng; T3.puertaD.rotation.y = T3.puertaAng;
+}
 function vivo3dReset(){
   try{ if(T3.renderer){ T3.renderer.dispose(); } }catch(e){}
-  T3.listo = false; T3.renderer = null; T3.scene = null; T3.persiana = null; T3.cerradoAnt = undefined; T3.zonas = []; T3.hover = null; T3.foco = null; T3.almacenTexto = null; T3.almacenKey = ""; T3.crates = []; T3.cratesN = -1; T3.productosKey = ""; T3.productos = []; T3.personasM = []; T3.camionesM = []; T3.interior = []; T3.nubes = []; T3.texCache = {}; T3.abiertoAnt = null; T3.abiertoM = null; T3.stockTexto = null; T3.hora = -1;
+  T3.listo = false; T3.renderer = null; T3.scene = null; T3.persiana = null; T3.lluvia = null; T3.puertaI = null; T3.puertaD = null; T3.metaCanvas = null; (T3.zonas||[]).forEach(function(q){ q.aviso = null; q.avisoTxt = ""; }); T3.cerradoAnt = undefined; T3.zonas = []; T3.hover = null; T3.foco = null; T3.almacenTexto = null; T3.almacenKey = ""; T3.crates = []; T3.cratesN = -1; T3.productosKey = ""; T3.productos = []; T3.personasM = []; T3.camionesM = []; T3.interior = []; T3.nubes = []; T3.texCache = {}; T3.abiertoAnt = null; T3.abiertoM = null; T3.stockTexto = null; T3.hora = -1;
   MASCOTAS.forEach(function(m){ m.m3 = null; }); VIVO.personas.forEach(function(p){ p.m3 = null; }); VIVO.motos.forEach(function(m){ m.m3 = null; }); VIVO.camiones.forEach(function(c){ c.m3 = null; }); VIVO.efectos.forEach(function(e){ e.m3 = null; }); FIESTA.particulas.forEach(function(q){ q.wz = undefined; });
 }
 // ---------- Mascotas del local: Otto (perrito blanco), Ramón (perrito oscuro) y Duko (gata carey) ----------
@@ -1505,18 +1550,18 @@ function vivo3dMascota(m, dt){
 }
 function vivo3dMascotas(dt){ MASCOTAS.forEach(function(m){ vivo3dMascota(m, dt); }); }
 function vivoLoop(ts){
-  if(!VIVO.canvas || !document.body.contains(VIVO.canvas)){ VIVO.raf = 0; return; }
+  if(!VIVO.canvas || !document.body.contains(VIVO.canvas)){ VIVO.raf = 0; try{ ambienteSonoro(); }catch(e){} return; }
   try{ vivoPaso(ts); }catch(e){ console.error(e); VIVO.raf = 0; var est = document.getElementById("vivo-estado"); if(est) est.textContent = "Este navegador no puede dibujar la escena. Prueba en la computadora o actualiza el navegador."; return; }
   VIVO.raf = requestAnimationFrame(vivoLoop);
 }
 function vivoPaso(ts){
-  var dt = Math.min(0.05, (ts - (VIVO.tAnt||ts))/1000); VIVO.tAnt = ts;
+  var dt = Math.min(0.05, (ts - (VIVO.tAnt||ts))/1000); VIVO.tAnt = ts; ambienteSonoro();
   if(!document.hidden){
     VIVO.personas = VIVO.personas.filter(function(p){ return p.viva; });
     VIVO.personas.forEach(function(p){ moverPersona(p, dt); });
     VIVO.motos.forEach(function(m){ moverMoto(m, dt); });
     VIVO.camiones = VIVO.camiones.filter(function(c){ return c.viva; }); VIVO.camiones.forEach(function(c){ moverCamion(c, dt); });
-    procesarCola(ts);
+    replayPaso(ts); procesarCola(ts);
     ambiente(dt); moverMascotas(dt);
     if(VIVO.modo==="3d"){ if(T3.listo) vivo3dRender(dt); } else vivoDibujar(dt);
   }
@@ -1531,7 +1576,7 @@ function moverCamion(c, dt){
 var COLORES_ROPA = ["#2f6fb3","#c23b2c","#1d7a3e","#742284","#b26a00","#049a91","#5c6f88","#d14f02"];
 function clienteCompra(ev){
   var v = ev.v, pendiente = estaPendiente(v), total = num(v.total);
-  var color = COLORES_ROPA[Math.floor(Math.random()*COLORES_ROPA.length)];
+  var color = COLORES_ROPA[Math.floor(Math.random()*COLORES_ROPA.length)]; var fq = v.cliente ? clientesFrecuentes()[normalizar(v.cliente)] : null; if(fq) color = fq.color; var nombreCli = fq ? String(v.cliente).trim().slice(0, 16) : "";
   var piel = ["#f1c9a5","#d9a97c","#b98357","#8d5a3b"][Math.floor(Math.random()*4)];
   var kgTotal = (v.items||[]).reduce(function(s,it){ return s + (num(it.kg) > 0 ? num(it.kg) : 0); }, 0);
   var moto = camionDe(v.vendedor), enRuta = esVentaEnRuta(v) && !!moto;
@@ -1540,17 +1585,17 @@ function clienteCompra(ev){
   if(enRuta){
     // Venta en ruta: el cliente llega por la vereda hasta el camion, paga ahi y el camion sigue su ruta.
     var tx = moto.px, puesto = { x:tx + 1.5, y:8.3 };
-    nuevaPersona({ x:tx + 5.0, y:8.3, color:color, piel:piel, ruta:[puesto], acciones:[
+    nuevaPersona({ x:tx + 5.0, y:8.3, color:color, piel:piel, nombre:nombreCli, ruta:[puesto], acciones:[
       { espera:1.3, bubble:(v.cliente||"Cliente").slice(0,22), fn:function(pp){ var r = (VIVO.ruteros||[]).find(function(x){ return normalizar(x.nombre)===normalizar(v.vendedor||""); }) || (VIVO.ruteros||[])[0]; if(r && !r.oculto){ r.bubble = "¡Buenas! ¿Qué va a llevar?"; r.espera = 1.6; } } },
       { espera:1.1, bubble:resumenItems(v.items).slice(0,30), fn:function(pp){ pp.bolsa = true; } },
       { espera:1.0, bubble:textoPago, color:pendiente ? "#c23b2c" : "#1d7a3e", fn:function(pp){ if(!pendiente || montoAbonado(v) > 0.009){ for(var i=0;i<6;i++) setTimeout(function(){ efecto("moneda", pp.x, pp.y, 20, null, null, tx + 2.3, 8.45); }, i*90); } efecto("texto", tx + 2.3, 8.45, 50, "En ruta · N° "+numNota(v)+" · "+fmt(total), pendiente ? "#c23b2c" : "#1d7a3e"); celebra(); } },
       { ruta:[{ x:tx + 5.2, y:8.3 }] }
-    ], alTerminar:function(pp){ pp.viva = false; if(!moto.fuera){ moto.fuera = true; moto.t = 0; moto.dur = 6 + Math.random()*4; moto.quien = v.vendedor||""; } } });
+    ], alTerminar:function(pp){ pp.viva = false; if(!moto.fuera){ moto.fuera = true; moto.t = 0; moto.dur = 6 + Math.random()*4; moto.quien = v.vendedor||""; if(VIVO.sonido) sonar("camion"); } } });
     return;
   }
   var puerta = { x:4.75, y:8.6 }, frente = { x:4.3 + Math.random()*1.2, y:5.3 };
   var cajero = (VIVO.cajeros||[]).find(function(c){ return normalizar(c.nombre)===normalizar(v.vendedor||""); }) || VIVO.trabajador;
-  nuevaPersona({ x:4.75, y:10.6, color:color, piel:piel, ruta:[puerta, frente], acciones:[
+  nuevaPersona({ x:4.75, y:10.6, color:color, piel:piel, nombre:nombreCli, ruta:[puerta, frente], acciones:[
     { espera:1.4, bubble:(v.cliente||"Cliente").slice(0,22), fn:function(pp){ VIVO.pesoBalanza = kgTotal ? kgTotal.toFixed(2) : "1.00"; if(cajero){ cajero.bubble = "¡Buenas! ¿Qué va a llevar?"; cajero.espera = 1.6; } } },
     { espera:1.2, bubble:resumenItems(v.items).slice(0,30), fn:function(pp){ pp.bolsa = true; } },
     { espera:1.0, bubble:textoPago, color:pendiente ? "#c23b2c" : "#1d7a3e",
@@ -1659,20 +1704,21 @@ function renderEnVivo(){
   var f = todayISO();
   return '<h1 class="section-title"><span class="live-dot"></span>Rico Pollo en vivo</h1><p class="section-sub">Su local en vivo: cada nota que emiten los vendedores entra como un cliente, paga en caja y se va. Las compras llegan en camión y las mermas salen de la cámara. Toque la caja, la cámara, la vitrina, el almacén, los camiones o el ranking (o los botones de abajo) para ver sus números. '+diaSemana(f)+' '+fechaDisplay(f)+'.</p>'
     + '<div class="vivo-grid"><div class="card vivo-card"><canvas id="vivo-canvas" aria-label="Escena del local en vivo"></canvas>'
-    + '<div id="vivo-zona-card" class="vivo-zona-card" style="display:none;"></div>'+vivoZonasBarHtml()
-    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm wa" data-action="resumen-wa" data-val="hoy" title="Resumen del día por WhatsApp"><span class="ic" style="display:inline-flex;">'+ico("wa")+'</span></button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="cerrar-dia">'+(VIVO.cerradoDia===todayISO() ? '🔓 Reabrir el local' : '🔒 Cerrar el día')+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
+    + '<div id="replay-barra" class="replay-barra" style="display:none;"><span class="rp-hora">7:00 am</span><div class="rp-track"><div class="rp-fill"></div></div><span class="rp-txt kard-sub"></span><button class="btn btn-sm btn-ghost" data-action="rp-parar">■ Parar</button></div>'
+    + '<div id="vivo-zona-card" class="vivo-zona-card" style="display:none;"></div>'+vivoZonasBarHtml()+'<div id="vivo-horas" class="vivo-horas">'+horasPicoHtml()+'</div>'
+    + '<div class="vivo-bar"><span class="kard-sub" id="vivo-estado">Conectado · se actualiza solo</span><span class="sp"></span><button class="btn btn-sm" data-action="vivo-sonido">'+(VIVO.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no')+'</button><button class="btn btn-sm" data-action="vivo-demo">Ver una venta de ejemplo</button><button class="btn btn-sm" data-action="vivo-replay">⏪ Repetir un día</button><label class="vol-wrap" title="Volumen">🔈<input type="range" id="vivo-vol" min="0" max="1" step="0.05" value="'+(VIVO.volumen)+'"></label><button class="btn btn-sm wa" data-action="resumen-wa" data-val="hoy" title="Resumen del día por WhatsApp"><span class="ic" style="display:inline-flex;">'+ico("wa")+'</span></button><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy: '+escapeHtml(rutaHoy().join(", ")||"nadie")+'</button><button class="btn btn-sm" data-action="cerrar-dia">'+(VIVO.cerradoDia===todayISO() ? '🔓 Reabrir el local' : '🔒 Cerrar el día')+'</button><button class="btn btn-sm" data-action="vivo-3d">'+(T3.on ? 'Vista: 3D' : 'Vista: clásica')+'</button><button class="btn btn-sm" data-action="vivo-pantalla">Pantalla completa</button><button class="btn btn-sm" data-action="vivo-tv" style="display:inline-flex;align-items:center;gap:6px;"><span class="ic" style="display:inline-flex;">'+ico("tv")+'</span>Modo TV</button></div></div>'
     + '<div class="card" id="vivo-panel">'+vivoPanelHtml()+'</div></div>';
 }
 function vivoMontar(){
   var c = document.getElementById("vivo-canvas"); if(!c) return;
-  VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO"; VIVO.montadoEn = Date.now(); if(lsGet("cierreAnim", "") === todayISO()) VIVO.cerradoDia = todayISO();
+  VIVO.canvas = c; VIVO.nombreLocal = "RICO POLLO"; VIVO.montadoEn = Date.now(); climaActualizar(); if(lsGet("cierreAnim", "") === todayISO()) VIVO.cerradoDia = todayISO();
   var glAnt = document.getElementById("vivo-gl"); if(glAnt) glAnt.style.display = "none"; c.style.display = "";
   vivo3dReset(); VIVO.modo = "2d"; vivoLayout();
   if(T3.on && hayWebGL()){ VIVO.modo = "3d"; c.style.display = "none"; var cargando = document.createElement("div"); cargando.className = "vivo-cargando"; cargando.textContent = "Cargando la vista 3D…"; c.parentElement.insertBefore(cargando, c); var est0 = document.getElementById("vivo-estado"); if(est0) est0.textContent = "Cargando la vista 3D…";
     cargarThree().then(function(){ var cg = document.querySelector(".vivo-cargando"); if(cg) cg.remove(); if(!document.body.contains(c) || VIVO.modo !== "3d") return; vivo3dInit(); var est1 = document.getElementById("vivo-estado"); if(est1) est1.textContent = "Conectado · se actualiza solo"; }).catch(function(e){ console.error(e); var cg2 = document.querySelector(".vivo-cargando"); if(cg2) cg2.remove(); c.style.display = ""; VIVO.modo = "2d"; vivoLayout(); toast("No se pudo cargar la vista 3D; se usa el dibujo clásico"); }); }
   VIVO.personas = []; VIVO.cajeros = []; VIVO.cajerosClave = ""; VIVO.ruteros = []; VIVO.ruterosClave = "";
   vivoReconstruirMotos(); vivoCajeros(); vivoRuteros();
-  VIVO.vistos = null; VIVO.cola = []; VIVO.efectos = []; VIVO.camiones = [];
+  VIVO.vistos = null; VIVO.cola = []; VIVO.efectos = []; VIVO.camiones = []; VIVO.replay = null; if(VIVO.sonido){ var acM = vivoAudio(); if(acM) asegurarMaster(acM); }
   vivoSincronizar();
   if(!VIVO.raf){ VIVO.tAnt = 0; VIVO.raf = requestAnimationFrame(vivoLoop); }
   if(!VIVO.resizeOn){ VIVO.resizeOn = true; window.addEventListener("resize", function(){ if(VIVO.canvas && document.body.contains(VIVO.canvas)) vivoLayout(); }); }
@@ -1681,18 +1727,23 @@ function vivoRefrescar(){
   var panel = document.getElementById("vivo-panel"); if(!panel) return false;
   vivoSincronizar(); if(!document.querySelector(".overlay")) panel.innerHTML = vivoPanelHtml();
   try{ vivoZonasAlertas(); if(VIVO.zonaActiva) vivoZonaPintar(); }catch(e){ console.error(e); }
-  var est = document.getElementById("vivo-estado"); if(est) est.textContent = (S.online ? "Conectado" : "Sin internet")+" · "+(VIVO.cola.length ? VIVO.cola.length+" en camino" : "se actualiza solo");
+  var est = document.getElementById("vivo-estado"); if(est) est.textContent = (S.online ? "Conectado" : "Sin internet")+" · "+(VIVO.cola.length ? VIVO.cola.length+" en camino" : "se actualiza solo")+(climaTxt() ? " · "+climaTxt() : "");
+  var hs = document.getElementById("vivo-horas"); if(hs && !document.querySelector(".overlay")) hs.innerHTML = horasPicoHtml();
+  climaActualizar().then(function(){ var e2 = document.getElementById("vivo-estado"); if(e2 && climaTxt() && e2.textContent.indexOf("°") < 0) e2.textContent += " · "+climaTxt(); });
   return true;
 }
 function vivoAudio(){ try{ if(!VIVO.audio) VIVO.audio = new (window.AudioContext || window.webkitAudioContext)(); if(VIVO.audio.state === "suspended") VIVO.audio.resume(); }catch(e){} return VIVO.audio; }
 function tono(ac, f, t0, dur, tipo, vol){ var o = ac.createOscillator(), g = ac.createGain(); o.type = tipo||"sine"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol||0.2, t0+0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur); o.connect(g); g.connect(VIVO.master); o.start(t0); o.stop(t0+dur+0.05); }
+function asegurarMaster(ac){ if(VIVO.master) return; VIVO.master = ac.createGain(); VIVO.master.gain.value = VIVO.volumen; var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7000; VIVO.master.connect(lp); lp.connect(ac.destination); }
+document.addEventListener("visibilitychange", function(){ try{ ambienteSonoro(); }catch(e){} });
 function sonar(tipo){
   var ac = vivoAudio(); if(!ac) return;
   try{
-    if(!VIVO.master){ VIVO.master = ac.createGain(); VIVO.master.gain.value = 0.55; var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7000; VIVO.master.connect(lp); lp.connect(ac.destination); }
+    asegurarMaster(ac);
     var t = ac.currentTime;
     if(tipo==="fiesta"){ [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){ tono(ac, f, t+i*0.12, 0.6, "triangle", 0.16); tono(ac, f*2, t+i*0.12, 0.35, "sine", 0.05); }); return; }
     if(tipo==="alarma"){ for(var a=0;a<4;a++){ tono(ac, 880, t+a*0.5, 0.24, "square", 0.08); tono(ac, 660, t+a*0.5+0.25, 0.24, "square", 0.08); } return; }
+    if(tipo==="camion"){ var o = ac.createOscillator(), g2 = ac.createGain(), lp2 = ac.createBiquadFilter(); o.type = "sawtooth"; o.frequency.setValueAtTime(50, t); o.frequency.linearRampToValueAtTime(95, t+1.4); lp2.type = "lowpass"; lp2.frequency.value = 220; g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(0.18, t+0.3); g2.gain.exponentialRampToValueAtTime(0.0001, t+2.2); o.connect(lp2); lp2.connect(g2); g2.connect(VIVO.master); o.start(t); o.stop(t+2.3); return; }
     // campanita de caja registradora: golpe corto + campana con sus armonicos, que se apaga despacio
     var buf = ac.createBuffer(1, Math.round(ac.sampleRate*0.05), ac.sampleRate), d = buf.getChannelData(0); for(var i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/d.length, 2.5);
     var ruido = ac.createBufferSource(); ruido.buffer = buf; var gr = ac.createGain(); gr.gain.value = 0.09; var hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 2500; ruido.connect(hp); hp.connect(gr); gr.connect(VIVO.master); ruido.start(t);
@@ -1734,6 +1785,88 @@ function cerrarDia(automatico){
 }
 function reabrirDia(){ VIVO.cerradoDia = null; lsSet("cierreAnim", ""); FIESTA.banner = { texto:"🔓 Local abierto de nuevo", t:0, vida:4 }; vivoRefrescar(); }
 setInterval(function(){ var d = new Date(); if(!S.user || UI.vista !== "envivo" || d.getHours() !== 20 || d.getMinutes() > 2) return; if(lsGet("cierreAnim", "") === todayISO()) return; cerrarDia(true); }, 60000);
+// ---------- 1. Repetir un dia (rebobinar): las notas de ese dia entran en orden, con el reloj acelerado ----------
+function replayIniciar(fecha, segundos){
+  var anioR = Number(fecha.slice(0,4)); if(S.aniosCargados[anioR] !== true){ cargarAnio(anioR, false); toast("Cargando las notas de "+anioR+"… vuelva a intentarlo en unos segundos"); return; }
+  var lista = ventasDelDia(fecha, "").filter(function(v){ return num(v.creadoEn) > 0; }); if(!lista.length){ toast("Ese día no tiene notas con hora"); return; }
+  var t0 = new Date(num(lista[0].creadoEn)), ini = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate(), Math.min(7, t0.getHours()), 0, 0).getTime();
+  var fin = Math.max(num(lista[lista.length-1].creadoEn) + 15*60000, ini + 60*60000);
+  VIVO.cola = []; VIVO.replay = { fecha:fecha, eventos:lista, i:0, ini:ini, fin:fin, t0:performance.now(), dur:(segundos||60)*1000, vendido:0 };
+  var bar = document.getElementById("replay-barra"); if(bar) bar.style.display = "";
+  toast("Repitiendo el "+fechaDisplay(fecha)+": "+lista.length+" nota"+(lista.length===1?"":"s"));
+}
+function replayParar(){ VIVO.replay = null; var bar = document.getElementById("replay-barra"); if(bar) bar.style.display = "none"; VIVO.cola = []; vivoRefrescar(); }
+function replayPaso(ts){
+  var R = VIVO.replay; if(!R) return; var k = Math.min(1, (ts - R.t0)/R.dur), virtual = R.ini + (R.fin - R.ini)*k;
+  while(R.i < R.eventos.length && num(R.eventos[R.i].creadoEn) <= virtual){ var v = R.eventos[R.i++]; R.vendido += num(v.total); VIVO.cola.push({ tipo:"venta", v:v, silencio:true }); }
+  var d = new Date(virtual), bar = document.getElementById("replay-barra");
+  if(bar){ var h = d.getHours(), m = d.getMinutes(), h12 = h%12||12; bar.querySelector(".rp-hora").textContent = h12+":"+pad(m)+(h>=12?" pm":" am"); bar.querySelector(".rp-txt").textContent = "Repitiendo el "+fechaDisplay(R.fecha)+" · "+R.i+" de "+R.eventos.length+" notas · "+fmt(R.vendido); bar.querySelector(".rp-fill").style.width = (k*100).toFixed(1)+"%"; }
+  if(k >= 1 && R.i >= R.eventos.length && !VIVO.cola.length && !R.cerrando){ R.cerrando = true; setTimeout(function(){ if(VIVO.replay===R){ VIVO.replay = null; var b2 = document.getElementById("replay-barra"); if(b2) b2.style.display = "none"; toast("Fin de la repetición"); } }, 6000); }
+}
+function abrirReplay(){
+  var ayer = isoAdd(todayISO(), -1);
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>⏪ Repetir un día</h2><p class="kard-sub" style="margin-bottom:10px;">La escena vuelve a mostrar las notas de ese día en orden, con el reloj acelerado. Sirve para revisar cómo fue un día sin haber estado mirando.</p>'
+    + '<div class="grid-2"><div class="field"><label for="rp-fecha">Día</label><input type="date" id="rp-fecha" value="'+ayer+'" max="'+todayISO()+'"></div><div class="field"><label for="rp-dur">Duración de la repetición</label><select id="rp-dur"><option value="60">1 minuto</option><option value="120">2 minutos</option><option value="300">5 minutos</option></select></div></div>'
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="rp-iniciar">▶ Repetir</button></div></div></div>';
+}
+// ---------- 2. mini mapa del camion en ruta ----------
+var MINI = { mapa:null, key:"", marker:null, timer:0 };
+function montarMiniRuta(ci){
+  var el = document.getElementById("mini-ruta"); if(!el || !window.L) return; var lista = ventasCamion(ci).filter(function(v){ return v.ubicacion && num(v.ubicacion.lat); }); var m = VIVO.motos[ci] || {};
+  if(MINI.mapa){ try{ MINI.mapa.remove(); }catch(e){} MINI.mapa = null; } if(MINI.timer){ clearInterval(MINI.timer); MINI.timer = 0; }
+  if(!lista.length){ el.innerHTML = '<p class="kard-sub" style="padding:8px;">Sin paradas con GPS todavía.</p>'; return; }
+  var mp = L.map(el, { zoomControl:false, attributionControl:false, scrollWheelZoom:false, dragging:false, zoomAnimation:false, fadeAnimation:false, markerZoomAnimation:false }); MINI.mapa = mp;
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:18 }).addTo(mp);
+  var pts = lista.map(function(v){ return [num(v.ubicacion.lat), num(v.ubicacion.lon)]; }); L.polyline(pts, { color:"#2a78d6", weight:3, opacity:.8 }).addTo(mp);
+  pts.forEach(function(pt, i){ L.circleMarker(pt, { radius:5, color:"#fff", weight:1.5, fillColor:"#f76204", fillOpacity:1 }).addTo(mp); });
+  var cam = L.marker(pts[pts.length-1], { icon:L.divIcon({ className:"mini-camion", html:"🚚", iconSize:[26,26], iconAnchor:[13,13] }) }).addTo(mp); MINI.marker = cam;
+  mp.fitBounds(L.latLngBounds(pts).pad(0.3), { animate:false }); setTimeout(function(){ try{ mp.invalidateSize({ animate:false }); }catch(e){} }, 200);
+  if(m.fuera && pts.length > 1){ var t = 0; MINI.timer = setInterval(function(){ if(!document.body.contains(el) || !MINI.marker){ clearInterval(MINI.timer); MINI.timer = 0; return; } t = (t + 0.01) % 1; var seg = Math.min(pts.length-2, Math.floor(t*(pts.length-1))), f = t*(pts.length-1) - seg; var a = pts[seg], b = pts[seg+1]; MINI.marker.setLatLng([a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f]); }, 80); }
+}
+// ---------- 5. clientes conocidos (los mas frecuentes entran con su nombre y color fijo) ----------
+var COLORES_FRECUENTES = ["#2f6fb3","#c23b2c","#1d7a3e","#742284","#b26a00","#049a91","#d14f02","#5c6f88","#8e44ad","#16a085"];
+function clientesFrecuentes(){
+  if(VIVO.frecuentes && Date.now() - VIVO.frecuentesT < 300000) return VIVO.frecuentes;
+  var c = {}; Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !v.cliente) return; var k = normalizar(v.cliente); c[k] = (c[k]||0) + 1; });
+  var top = Object.keys(c).sort(function(a,b){ return c[b]-c[a]; }).slice(0, 10), out = {}; top.forEach(function(k, i){ out[k] = { color:COLORES_FRECUENTES[i], n:c[k], pos:i+1 }; });
+  VIVO.frecuentes = out; VIVO.frecuentesT = Date.now(); return out;
+}
+// ---------- 6. horas pico: ventas por hora de hoy contra el promedio de los ultimos 30 dias ----------
+function horasPicoHtml(){
+  var hoyF = todayISO(), desde = isoAdd(hoyF, -30), hoy = [], prom = [], dias = {}; for(var h=0;h<24;h++){ hoy[h] = 0; prom[h] = 0; }
+  Object.keys(S.ventas).forEach(function(id){ var v = S.ventas[id]; if(v.eliminado || !num(v.creadoEn)) return; var f = String(v.fecha||"").slice(0,10), h = new Date(num(v.creadoEn)).getHours(); if(f===hoyF) hoy[h] += num(v.total); else if(f >= desde && f < hoyF){ prom[h] += num(v.total); dias[f] = 1; } });
+  var nd = Math.max(1, Object.keys(dias).length); for(var i=0;i<24;i++) prom[i] = prom[i]/nd;
+  var h0 = 6, h1 = 21, max = 1; for(var j=h0;j<h1;j++) max = Math.max(max, hoy[j], prom[j]);
+  var W = 720, H = 84, bw = W/(h1-h0), totHoy = hoy.reduce(function(a,b){ return a+b; }, 0), totProm = prom.reduce(function(a,b){ return a+b; }, 0), ahoraH = new Date().getHours();
+  var promHasta = 0; for(var q=h0;q<=Math.min(ahoraH, h1-1);q++) promHasta += prom[q]; var dif = totHoy - promHasta;
+  var sv = '<svg viewBox="0 0 '+W+' '+(H+18)+'" class="horas-svg" role="img" aria-label="Ventas por hora">';
+  for(var k=h0;k<h1;k++){ var x = (k-h0)*bw; var hp = prom[k]/max*H, hh = hoy[k]/max*H; sv += '<rect x="'+(x+3)+'" y="'+(H-hp)+'" width="'+(bw-6)+'" height="'+hp+'" fill="var(--grid)" rx="2"/>'; if(hoy[k] > 0) sv += '<rect x="'+(x+8)+'" y="'+(H-hh)+'" width="'+(bw-16)+'" height="'+hh+'" fill="'+(k===ahoraH ? '#f76204' : 'var(--s1)')+'" rx="2"><title>'+k+':00 · hoy '+fmt(hoy[k])+' · promedio '+fmt(prom[k])+'</title></rect>'; sv += '<text x="'+(x+bw/2)+'" y="'+(H+14)+'" text-anchor="middle" font-size="11" fill="var(--ink-soft)">'+(k%12||12)+(k>=12?'p':'a')+'</text>'; }
+  sv += '</svg>';
+  return '<div class="horas-head"><span><strong>Horas pico</strong> · hoy (azul) frente al promedio por hora de los últimos '+nd+' día'+(nd===1?'':'s')+' (gris)</span><span class="'+(dif >= 0 ? 'pos' : 'negv')+'">'+(nd ? (dif >= 0 ? '▲ ' : '▼ ')+fmt(Math.abs(dif))+' '+(dif >= 0 ? 'por encima' : 'por debajo')+' de lo normal a esta hora' : '')+'</span></div>'+sv;
+}
+// ---------- 7. clima real (Open-Meteo, gratis, sin clave) ----------
+var CLIMA = { datos:lsGet("clima", null), t:0 };
+function coordsLocal(){ var c = S.config.local; if(c && num(c.lat)) return { lat:num(c.lat), lon:num(c.lon) }; var lat = 0, lon = 0, n = 0; Object.keys(S.ventas).forEach(function(id){ var u = S.ventas[id].ubicacion; if(u && num(u.lat) && n < 300){ lat += num(u.lat); lon += num(u.lon); n++; } }); return n ? { lat:lat/n, lon:lon/n } : { lat:-12.05, lon:-77.04 }; }
+function climaActualizar(){
+  var d = CLIMA.datos; if(d && Date.now() - num(d.t) < 30*60000) return Promise.resolve(d);
+  if(CLIMA.enVuelo) return CLIMA.enVuelo; if(Date.now() - CLIMA.t < 5*60000) return Promise.resolve(d); CLIMA.t = Date.now();
+  var c = coordsLocal();
+  CLIMA.enVuelo = fetch("https://api.open-meteo.com/v1/forecast?latitude="+c.lat.toFixed(3)+"&longitude="+c.lon.toFixed(3)+"&current=weather_code,temperature_2m,is_day&timezone=auto").then(function(r){ return r.json(); }).then(function(j){ var cu = j.current||{}; var code = Number(cu.weather_code)||0;
+    var tipo = code===0 || code===1 ? "despejado" : code===2 ? "parcial" : code===3 ? "nublado" : (code===45||code===48) ? "niebla" : (code >= 51 && code <= 67) || (code >= 80 && code <= 82) ? "lluvia" : code >= 95 ? "tormenta" : "nublado";
+    var dd = { t:Date.now(), code:code, temp:Math.round(num(cu.temperature_2m)), tipo:tipo }; CLIMA.datos = dd; lsSet("clima", dd); T3.hora = -1; return dd; }).catch(function(){ return CLIMA.datos; }).then(function(x){ CLIMA.enVuelo = null; return x; });
+  return CLIMA.enVuelo;
+}
+function climaTxt(){ var d = CLIMA.datos; if(!d) return ""; var ic = { despejado:"☀", parcial:"⛅", nublado:"☁", niebla:"🌫", lluvia:"🌧", tormenta:"⛈" }[d.tipo] || "☁"; return ic+" "+d.temp+"°"; }
+function climaFactor(){ var d = CLIMA.datos; if(!d) return { nubes:1, gris:0, lluvia:false }; return d.tipo==="despejado" ? { nubes:0.5, gris:0, lluvia:false } : d.tipo==="parcial" ? { nubes:1, gris:0.1, lluvia:false } : d.tipo==="nublado" ? { nubes:1.6, gris:0.35, lluvia:false } : d.tipo==="niebla" ? { nubes:1.3, gris:0.45, lluvia:false } : { nubes:1.8, gris:0.5, lluvia:true }; }
+// ---------- 8. modo TV: rota solo entre la escena, el podio y los camiones ----------
+var TV_ROTA = ["", "marcador", "camion1", "camion2"];
+setInterval(function(){ if(!S.user || UI.vista !== "envivo" || !document.body.classList.contains("tv") || VIVO.replay) return; VIVO.tvIdx = ((VIVO.tvIdx||0) + 1) % TV_ROTA.length; var z = TV_ROTA[VIVO.tvIdx]; if(z) vivoZona(z); else vivoZonaCerrar(); }, 20000);
+// ---------- 9. sonidos de ambiente ----------
+function ambienteSonoro(){
+  var enVista = UI.vista==="envivo" && !!VIVO.canvas && document.body.contains(VIVO.canvas); var quiere = VIVO.sonido && enVista && VIVO.abierto && !document.hidden; var ac = VIVO.audio; if(quiere && ac && !VIVO.master) asegurarMaster(ac);
+  if(quiere && !VIVO.murmullo && ac && VIVO.master){ try{ var n = ac.sampleRate*3, buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0), b0 = 0, b1 = 0; for(var i=0;i<n;i++){ var w = Math.random()*2-1; b0 = 0.98*b0 + w*0.02; b1 = 0.9*b1 + b0*0.1; d[i] = b1*3; } var src = ac.createBufferSource(); src.buffer = buf; src.loop = true; var lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 500; var g = ac.createGain(); g.gain.value = 0.0; src.connect(lp); lp.connect(g); g.connect(VIVO.master); src.start(); g.gain.linearRampToValueAtTime(0.08, ac.currentTime + 2); VIVO.murmullo = { src:src, g:g }; }catch(e){} }
+  if(!quiere && VIVO.murmullo){ try{ var mu = VIVO.murmullo; mu.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1); setTimeout(function(){ try{ mu.src.stop(); }catch(e){} }, 1200); }catch(e){} VIVO.murmullo = null; }
+}
 function vivoDemo(){
   var v = { id:"demo", cliente:"Cliente de ejemplo", vendedor:(S.user ? S.user.nombre : ""), total:148.5, items:[{ producto:"POLLO ENTERO", kg:15, cantidad:5, precio:9.9 }], tipoPago:"contado", metodoPago:"efectivo", pagado:true, serie:"X", correlativo:0, creadoEn:Date.now() };
   VIVO.cola.push({ tipo:"venta", v:v, celebra:"¡Así se celebra una venta grande!" });
@@ -2633,6 +2766,9 @@ document.addEventListener("click", function(ev){
   if(action==="nuevo-ajuste"){ abrirFormAjuste(); return; }
   if(action==="nuevo-merma"){ abrirFormMerma(); return; }
   if(action==="vivo-demo"){ vivoDemo(); return; }
+  if(action==="vivo-replay"){ if(VIVO.replay) replayParar(); else abrirReplay(); return; }
+  if(action==="rp-iniciar"){ var rf = document.getElementById("rp-fecha").value, rd = Number(document.getElementById("rp-dur").value)||60; closeOverlay(); if(rf){ cargarAnio(Number(rf.slice(0,4)), false); replayIniciar(rf, rd); } return; }
+  if(action==="rp-parar"){ replayParar(); return; }
   if(action==="vivo-zona"){ vivoZona(val); return; }
   if(action==="vivo-zona-cerrar"){ vivoZonaCerrar(); return; }
   if(action==="recorrido"){ abrirRecorrido(Number(val)||0); return; }
@@ -2706,6 +2842,7 @@ document.addEventListener("input", function(ev){
   else if(id==="gastos-buscar"){ UI.gastosBuscar = el.value; var tb = document.querySelector(".main"); clearTimeout(window.__bq); window.__bq = setTimeout(function(){ render(); var b = document.getElementById("gastos-buscar"); if(b){ b.focus(); b.setSelectionRange(b.value.length, b.value.length); } }, 350); }
   else if(id==="caja-real"){ UI.cajaReal = el.value; if(UI.cajaConteo && Math.abs(r2(el.value) - conteoTotal(UI.cajaConteo)) > 0.009) UI.cajaConteo = null; clearTimeout(window.__cq); window.__cq = setTimeout(function(){ render(); var r = document.getElementById("caja-real"); if(r){ r.focus(); } }, 600); }
   else if(id==="caja-nota"){ UI.cajaNota = el.value; }
+  else if(id==="vivo-vol"){ VIVO.volumen = num(el.value); lsSet("volumen", VIVO.volumen); if(VIVO.master) VIVO.master.gain.value = VIVO.volumen; }
   else if(el.classList && el.classList.contains("den-cant")){ conteoPintar(); }
 });
 document.addEventListener("keydown", function(ev){ if(ev.key==="Escape") closeOverlay(); });
