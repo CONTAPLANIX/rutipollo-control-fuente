@@ -95,6 +95,9 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   coordenadas de `control/config.local{lat,lon}` o promedio de notas con GPS), modo TV rotativo (`TV_ROTA`), murmullo de ambiente y motor
   del camión (`ambienteSonoro`, `sonar("camion")`, volumen `VIVO.volumen`/`#vivo-vol`, `asegurarMaster`), puerta de vidrio de dos hojas
   (`vivo3dPuerta`) y ventanas con transmission. Revisión: 2 fallas corregidas (murmullo al salir de la vista, replay tras remontar).
+- C37 (25-oct-2026): mascotas solo por zonas libres (`ZONAS_MASC` frente/derecha/atrás conectadas por solapes, `rutaMascota`, `SUBIDAS` para
+  subir al mostrador/vitrina/jabas) y paseo natural (destinos al azar en las zonas, curva suave `m.curva`, ritmo `m.vel`, olfateos `m.olfateo`,
+  giro suave `m.ang`). Simulación en node: 3 min sin pisar muebles.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
