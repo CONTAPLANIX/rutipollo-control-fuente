@@ -88,6 +88,9 @@
   .cal-leg{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--ink-soft); margin-top:6px; justify-content:flex-end; }
   .cal-leg i{ width:14px; height:10px; border-radius:2px; display:inline-block; }
   #mapa-ventas{ height:360px; border-radius:10px; overflow:hidden; background:var(--paper-alt); }
+  #mapa-recorrido{ height:320px; border-radius:10px; overflow:hidden; background:var(--paper-alt); margin-bottom:10px; }
+  .paradas{ margin:0; padding-left:20px; } .paradas li{ padding:4px 0; border-bottom:1px dashed var(--line); font-size:13px; } .paradas li:last-child{ border-bottom:none; } .paradas .dir{ font-size:12px; color:var(--ink-soft); }
+  .parada-marker span{ display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#f76204; color:#fff; font-weight:700; font-size:13px; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.35); }
   .leaflet-container{ font-family:"IBM Plex Sans",system-ui,sans-serif; }
   .mapa-leg{ display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft); margin-top:8px; }
   .mapa-leg i{ display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; vertical-align:-2px; }
@@ -325,7 +328,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "25 oct · C29";
+var APP_VERSION = "25 oct · C30";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -1273,7 +1276,7 @@ function vivoZona(id){
   vivoZonaPintar();
 }
 function vivoZonaCerrar(){ VIVO.zonaActiva = null; T3.foco = null; vivoZonaPintar(); }
-function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
+function vivoZonaPintar(){ var c = document.getElementById("vivo-zona-card"); if(!c) return; var id = VIVO.zonaActiva, sc = c.scrollTop; c.innerHTML = id ? zonaInfoHtml(id) : ""; c.style.display = id ? "" : "none"; c.scrollTop = sc; cargarDirecciones(); document.querySelectorAll(".vivo-zonas button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-val")===id); }); }
 function vivoZonasBarHtml(){ return '<div class="vivo-zonas">'+ZONAS.map(function(z){ return '<button data-action="vivo-zona" data-val="'+z.id+'" class="'+(VIVO.zonaActiva===z.id?'on':'')+'" title="Ver '+z.nombre+'"><span class="ic">'+ico(z.ico)+'</span><span>'+z.nombre+'</span></button>'; }).join("")+'</div>'; }
 function vivoZonasAlertas(){
   var al = calcAlertas(), z = {}; al.forEach(function(a){ if(a.tipo==="stock") z.camara = true; if(a.tipo==="caja") z.caja = true; if(a.tipo==="tinas") z.camion1 = true; });
@@ -1288,12 +1291,53 @@ function zonaInfoHtml(id){
   else if(id==="vitrina"){ var pl = VIVO.productosHoy||[]; body = pl.length ? '<ul class="ledger">'+pl.map(function(p){ return li(escapeHtml(p.corto.toLowerCase()), p.kg > 0 ? kgTxt(p.kg)+(p.unidad==="kg" ? " kg hoy" : " hoy") : "sin ventas hoy"); }).join("")+'</ul>' : '<p class="kard-sub">Todavía no hay productos vendidos hoy. Apenas salga una nota, aparecen aquí con sus kilos.</p>'; }
   else if(id==="almacen"){ var al = stockAlmacen(); body = al.length ? '<ul class="ledger">'+al.map(function(p){ return li(escapeHtml(p.nombre.toLowerCase()), kgTxt(p.final)+" "+escapeHtml(p.unidad), "vendido hoy "+kgTxt(p.salidas)); }).join("")+'</ul>' : '<p class="kard-sub">Aquí van los embutidos y cremas. Registre su compra en Gastos marcando "entra al Kardex" (por ejemplo HOT DOG, CHORIZO, MAYONESA) y aparecerán con su stock.</p>'; }
   else if(id==="camion1" || id==="camion2"){ var m = VIVO.motos[z.camion] || {}; var tn = calcTinas({ desde:f, hasta:f });
-    var chof = String(m.chofer||"").split(" + ").map(normalizar).filter(Boolean); var enRuta = ing.lista.filter(function(v){ return esVentaEnRuta(v) && chof.indexOf(normalizar(v.vendedor||"")) >= 0; }); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
+    var enRuta = ventasCamion(z.camion); var tot = enRuta.reduce(function(s,v){ return s+num(v.total); }, 0);
     var otro = VIVO.motos[z.camion ? 0 : 1];
-    body = '<ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;">'+enRuta.slice(-4).reverse().map(function(v){ return '<div class="kard-sub">'+horaDisplay(v.creadoEn)+' · '+escapeHtml(v.cliente||"")+' · '+fmt(v.total)+'</div>'; }).join("")+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
-      + '<div class="actions-row" style="justify-content:flex-start;"><button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
+    body = '<ul class="ledger">'+li("Estado", m.fuera ? "en ruta" : "en el local", m.chofer ? "lo lleva "+escapeHtml(m.chofer) : "sin chofer hoy · asígnelo en Ruta de hoy")+li("Ventas en ruta hoy", fmt(tot), enRuta.length+" nota"+(enRuta.length===1?"":"s")+(m.chofer ? " de "+escapeHtml(m.chofer) : ""))+(enRuta.length ? '<li style="display:block;"><div class="kard-sub" style="margin-bottom:4px;">Paradas de hoy (hacia dónde fue):</div>'+paradasHtml(enRuta)+'</li>' : '')+(z.camion===0 ? li("Tinas en la calle", String(tn.enCalle), tn.porCliente.filter(function(g){ return g.saldo > 0; }).slice(0,3).map(function(g){ return escapeHtml(g.cliente)+" "+g.saldo; }).join(" · ")||"ninguna") : '')+'</ul>'
+      + '<div class="actions-row" style="justify-content:flex-start;">'+(enRuta.some(function(v){ return v.ubicacion && num(v.ubicacion.lat); }) ? '<button class="btn btn-sm btn-primary" data-action="recorrido" data-val="'+z.camion+'">Ver recorrido en el mapa</button>' : '')+'<button class="btn btn-sm" data-action="ruta-hoy">Ruta de hoy</button>'+(otro ? '<button class="btn btn-sm" data-action="vivo-zona" data-val="'+(z.camion ? "camion1" : "camion2")+'">Ver '+escapeHtml(otro.nombre.toLowerCase())+'</button>' : '')+'<button class="btn btn-sm" data-action="vista" data-val="tinas">Ver tinas</button></div>'; }
   else if(id==="marcador"){ body = podioHtml(VIVO.marcador||[]); }
   return '<div class="zc-head"><span class="ic">'+ico(z.ico)+'</span><strong>'+z.nombre+'</strong><span class="sp"></span><button class="btn btn-sm btn-ghost" data-action="vivo-zona-cerrar" title="Cerrar">✕</button></div>'+body;
+}
+// ---------- Paradas del dia por camion: direccion aproximada desde el GPS de la nota (OpenStreetMap / Nominatim, con cache en el equipo) ----------
+var GEO = { cache:lsGet("geo", {}) || {}, cola:[], ocupado:false };
+function geoClave(u){ return num(u.lat).toFixed(4)+","+num(u.lon).toFixed(4); }
+function direccionCorta(d){ if(!d) return ""; var a = d.address || {}; var calle = [a.road || a.pedestrian || a.footway || a.residential || "", a.house_number || ""].join(" ").trim(); var zona = a.neighbourhood || a.suburb || a.quarter || a.village || a.town || a.city_district || ""; var ciudad = a.city || a.town || a.municipality || a.county || ""; var partes = [calle, zona, ciudad].filter(function(x, i, arr){ return x && arr.indexOf(x) === i; }); return partes.length ? partes.join(", ") : String(d.display_name||"").split(",").slice(0,3).join(",").trim(); }
+function direccionDe(u){
+  if(!u || !num(u.lat)) return Promise.resolve(""); var k = geoClave(u); if(GEO.cache[k]) return Promise.resolve(GEO.cache[k]);
+  return new Promise(function(res){ GEO.cola.push({ k:k, u:u, res:res }); geoSiguiente(); });
+}
+function geoSiguiente(){
+  if(GEO.ocupado || !GEO.cola.length) return; var q = GEO.cola.shift(); if(GEO.cache[q.k]){ q.res(GEO.cache[q.k]); geoSiguiente(); return; } GEO.ocupado = true;
+  fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="+num(q.u.lat)+"&lon="+num(q.u.lon)+"&zoom=17&addressdetails=1&accept-language=es", { headers:{ "Accept-Language":"es" } })
+    .then(function(r){ return r.json(); }).then(function(d){ var t = direccionCorta(d); if(t){ GEO.cache[q.k] = t; var ks = Object.keys(GEO.cache); if(ks.length > 400) delete GEO.cache[ks[0]]; lsSet("geo", GEO.cache); } q.res(t); })
+    .catch(function(){ q.res(""); })
+    .then(function(){ setTimeout(function(){ GEO.ocupado = false; geoSiguiente(); }, 1100); });
+}
+function ventasCamion(ci){
+  var m = VIVO.motos[ci] || {}; var chof = String(m.chofer||"").split(" + ").map(normalizar).filter(Boolean); var E = vivoEstadoHoy();
+  return E.ing.lista.filter(function(v){ return esVentaEnRuta(v) && chof.indexOf(normalizar(v.vendedor||"")) >= 0; }).sort(function(a,b){ return num(a.creadoEn)-num(b.creadoEn); });
+}
+function paradasHtml(lista){
+  return '<ol class="paradas">'+lista.map(function(v){ var conGps = v.ubicacion && num(v.ubicacion.lat); return '<li><div><strong>'+horaDisplay(v.creadoEn)+'</strong> · '+escapeHtml(v.cliente||"")+' · '+fmt(v.total)+(conGps ? ' · <a href="'+mapsLink(v.ubicacion)+'" target="_blank" rel="noopener">mapa</a>' : '')+'</div><div class="dir"'+(conGps ? ' data-geo="'+escapeHtml(JSON.stringify({ lat:num(v.ubicacion.lat), lon:num(v.ubicacion.lon) }))+'">buscando dirección…' : '>sin ubicación GPS en la nota')+'</div></li>'; }).join("")+'</ol>';
+}
+function cargarDirecciones(){
+  document.querySelectorAll("[data-geo]").forEach(function(el){ var u; try{ u = JSON.parse(el.getAttribute("data-geo")); }catch(e){ return; } el.removeAttribute("data-geo"); direccionDe(u).then(function(t){ if(document.body.contains(el)) el.textContent = t || (num(u.lat).toFixed(5)+", "+num(u.lon).toFixed(5)); }); });
+}
+var RECORRIDO = { mapa:null };
+function abrirRecorrido(ci){
+  var m = VIVO.motos[ci] || {}, lista = ventasCamion(ci), con = lista.filter(function(v){ return v.ubicacion && num(v.ubicacion.lat); });
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2><span class="ic" style="display:inline-flex;vertical-align:-3px;">'+ico("camion")+'</span> Recorrido de hoy · '+escapeHtml(m.nombre||"camión")+(m.chofer ? ' · '+escapeHtml(m.chofer) : '')+'</h2><p class="kard-sub" style="margin-bottom:8px;">'+lista.length+' parada'+(lista.length===1?'':'s')+' en orden de hora · '+con.length+' con ubicación GPS. Las direcciones son aproximadas (según el GPS del celular al emitir la nota).</p>'
+    + '<div id="mapa-recorrido"></div>' + paradasHtml(lista)
+    + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cerrar</button></div></div></div>';
+  cargarDirecciones();
+  if(RECORRIDO.mapa){ try{ RECORRIDO.mapa.remove(); }catch(e){} RECORRIDO.mapa = null; }
+  var el = document.getElementById("mapa-recorrido"); if(!el || !window.L || !con.length){ if(el) el.innerHTML = '<p class="empty">Ninguna parada tiene ubicación GPS.</p>'; return; }
+  var mp = L.map(el, { scrollWheelZoom:false, zoomAnimation:false, fadeAnimation:false, markerZoomAnimation:false, inertia:false }); RECORRIDO.mapa = mp;
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(mp);
+  var pts = con.map(function(v){ return [num(v.ubicacion.lat), num(v.ubicacion.lon)]; });
+  L.polyline(pts, { color:"#2a78d6", weight:4, opacity:.8, dashArray:"8 6" }).addTo(mp);
+  con.forEach(function(v, i){ var mk = L.marker(pts[i], { icon:L.divIcon({ className:"parada-marker", html:'<span>'+(i+1)+'</span>', iconSize:[26,26], iconAnchor:[13,13] }) }).addTo(mp); var div = document.createElement("div"); div.style.fontSize = "13px"; div.innerHTML = '<b></b><br><span></span>'; div.querySelector("b").textContent = (i+1)+". "+(v.cliente||""); div.querySelector("span").textContent = horaDisplay(v.creadoEn)+" · "+fmt(v.total); mk.bindPopup(div); });
+  mp.fitBounds(L.latLngBounds(pts).pad(0.25), { animate:false }); setTimeout(function(){ try{ mp.invalidateSize({ animate:false }); }catch(e){} }, 250);
 }
 function podioHtml(lista){
   if(!lista.length) return '<p class="kard-sub">Sin ventas todavía hoy. El primero en vender sube al podio.</p>';
@@ -2499,7 +2543,7 @@ function cargarAnio(anio, enVivo){
 function asegurarAnios(){ var r = periodo(), rp = periodoAnterior(r); aniosDe(r).concat(aniosDe(rp)).forEach(function(a){ if(a >= 2020 && a <= hp.anio+1) cargarAnio(a, false); }); }
 
 // ---------- eventos ----------
-function closeOverlay(){ document.getElementById("overlay-root").innerHTML = ""; }
+function closeOverlay(){ if(RECORRIDO.mapa){ try{ RECORRIDO.mapa.remove(); }catch(e){} RECORRIDO.mapa = null; } document.getElementById("overlay-root").innerHTML = ""; }
 document.addEventListener("click", function(ev){
   var t = ev.target.closest("[data-action]"); if(!t) return;
   var action = t.getAttribute("data-action"), val = t.getAttribute("data-val"), id = t.getAttribute("data-id");
@@ -2538,6 +2582,7 @@ document.addEventListener("click", function(ev){
   if(action==="vivo-demo"){ vivoDemo(); return; }
   if(action==="vivo-zona"){ vivoZona(val); return; }
   if(action==="vivo-zona-cerrar"){ vivoZonaCerrar(); return; }
+  if(action==="recorrido"){ abrirRecorrido(Number(val)||0); return; }
   if(action==="vivo-pantalla"){ var vc = document.querySelector(".vivo-card"); if(!vc) return; if(document.fullscreenElement){ document.exitFullscreen(); } else if(vc.requestFullscreen){ vc.requestFullscreen().then(function(){ setTimeout(vivoLayout, 300); }).catch(function(){}); } return; }
   if(action==="guardar-merma"){ guardarMerma(); return; }
   if(action==="quitar-mov"){ var mv = S.egresos[id]; if(mv && confirm("¿Quitar este movimiento del Kardex ("+(mv.tipo==="merma"?"merma":"ajuste")+" de "+kgTxt(mv.kardex?mv.kardex.kg:0)+")?")){ eliminarGasto(id, true, true); } return; }

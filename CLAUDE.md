@@ -67,6 +67,7 @@
   `lsGet("resumenWa")`); avisos `margen` (`ventasBajoCosto`: precio de hoy < costo promedio del mes); caja por billetes y monedas
   (`DENOMINACIONES`, `UI.cajaConteo`, se guarda en `cierres.conteo`); tutorial guiado (`TUTORIAL`, `#tut-card`, `lsGet("tutorialVisto")`,
   botón en Ajustes); Ruta de hoy elige camión por persona (`rutaHoy.camiones {NOMBRE_NORMALIZADO: 0|1}`, `camionesHoy`).
+- C29 (25-oct-2026): zonas `camion1` y `camion2` separadas (una por camión, `ZONAS[].camion` = índice en `VIVO.motos`); la tarjeta muestra chofer y ventas en ruta de ese chofer.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
