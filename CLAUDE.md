@@ -74,8 +74,14 @@
 - C31 (25-oct-2026): cierre del día animado (`cerrarDia`/`reabrirDia`, botón "Cerrar el día" en la barra y automático a las 20:00 en la vista En vivo,
   `lsGet("cierreAnim")`; letrero con totales, lluvia de monedas, cajeras a la puerta, persiana 3D `T3.persiana`, luces bajas, `VIVO.cerradoDia`).
   Las paradas usan `v.direccion` si la nota ya la trae (las apps v54/A16/D8/H5 la guardan al emitir; reglas: `direccion` permitida en `soloCobro`).
-  Resumen de las 20:00 aunque la página esté cerrada: `herramientasesumen_waesumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
+  Resumen de las 20:00 aunque la página esté cerrada: `herramientas
+esumen_wa
+esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   (CallMeBot al 918817528; falta la apikey en `config.json`).
+- C32 (25-oct-2026): three.js se precarga al entrar (`cargarThree()` en `alEntrar`) y mientras carga la vista 3D se muestra `.vivo-cargando`
+  en vez del dibujo 2D (el bucle no dibuja 2D en modo 3d). Camiones estacionados a los lados (`px` 1.6 y 9.6) para dejar libre la puerta
+  (x 4.75); el camión del proveedor se detiene en x 6.5; vendedor de ruta en la vereda junto a la cabina (`px+2.3, z 8.45`) y el cliente de
+  ruta llega por la vereda (z 8.3) desde la derecha. Las zonas `camion1/camion2` siguen a esas posiciones.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
