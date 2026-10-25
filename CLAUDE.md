@@ -85,6 +85,8 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
 - C33 (25-oct-2026): "Recorridos por día" (botón en el mapa del Tablero, en la tarjeta del camión y en el modal del recorrido de hoy):
   `abrirRecorridos(fecha, vendedor)` → `ventasDelDia` + `pintarRecorrido` (controles `rec-fecha`/`rec-vend`, paradas con dirección, mapa).
   Los días pasados se ven por vendedor (no por camión, porque la asignación de camión solo se guarda del día). Carga el año con `cargarAnio`.
+- C34 (25-oct-2026): "Recorridos" es pestaña propia del menú (`renderRecorridos`, en celular "Rutas"): día anterior/siguiente/hoy,
+  vendedor, paradas con dirección y mapa (`montarRecorridoMapa`, se monta desde `render()`); se quitó el botón del Tablero.
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
