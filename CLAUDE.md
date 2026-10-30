@@ -122,6 +122,15 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   reduced-motion, `.cols-2{align-items:start}` (Ajustes ya no estira la tarjeta corta) y barra de pestañas del celular desplazable con la activa
   centrada (`scrollIntoView` en `render`). Capturas automáticas para revisar diseño: `scratchpad\capturas.js` (Edge sin ventana + CDP; entra con
   el admin temporal y fotografía cada vista en escritorio, celular y oscuro).
+- C42 (29-oct-2026): prueba completa del inventario en la demo (3 compras con proveedor y comprobante → Gastos y Mercaderías → Kardex con
+  costo promedio, merma al recibir y merma por malogrado → edición/eliminación/restauración de compras → gasto en efectivo → Caja → Tablero):
+  todo cuadró sin corregir nada. Agregado: códigos de producto en compras/mermas/ajustes (`resolverProducto` acepta el código de la app o el
+  nombre; `productosDatalist` muestra el código; el Kardex lo enseña con `productoCodigo`), y tinas malogradas/perdidas: movimiento `tinas`
+  tipo `baja` {motivo (`MOTIVOS_TINA`), costo por tina, gastoId, cliente opcional} que descuenta del total del negocio ("en uso"), del saldo
+  del cliente si las tenía, y si lleva costo crea un gasto (categoría Insumos) ligado por `tinaId`; quitar la baja quita su gasto.
+  Modelo de utilidad vigente: Utilidad = cobrado (o vendido) − gastos, con la compra entera como gasto; la merma NO se resta otra vez
+  (sería doble) y se muestra como pérdida estimada en el Kardex. Pendiente que el dueño decida si quiere una "utilidad real con Kardex"
+  (vendido − costo de lo vendido − mermas − otros gastos).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
