@@ -352,7 +352,7 @@
 <script>
 (function(){
 "use strict";
-var APP_VERSION = "29 oct · C41";
+var APP_VERSION = "29 oct · C42";
 // Celulares antiguos: roundRect y ellipse no existen en su navegador; se dibujan a mano.
 try{
   var CRC = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
@@ -363,6 +363,7 @@ var CFG = { nombre:"Rico Pollo Dissur", titulo:"Rico Pollo", dominio:"rutipollo.
 var CATEGORIAS_BASE = ["Compra de pollo","Embutidos y cremas","Transporte / combustible","Sueldos","Alquiler","Cuotas del local","Servicios básicos del local","Insumos","Otros"];
 var CATEGORIAS_NUEVAS = ["Embutidos y cremas","Cuotas del local","Servicios básicos del local"]; // se agregan solas a las instalaciones que ya tenian categorias guardadas
 var METODOS = ["efectivo","banco","yape","plin"];
+var MOTIVOS_TINA = ["Malograda / rota","Perdida","El cliente no la devolvió","Otro"];
 var MOTIVOS_MERMA = ["Malogrado / descompuesto","Vencido","Devolución de cliente","Robo o pérdida","Peso de menos del proveedor","Otro"];
 var MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 var MESES_ABR = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -2022,6 +2023,14 @@ function renderGastos(){
     + '<div class="card"><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Forma</th><th class="num">Monto</th><th>Registró</th><th></th></tr></thead><tbody>'
     + (rows || '<tr><td colspan="7"><p class="empty">'+(UI.verEliminados ? 'No hay gastos eliminados en este periodo.' : 'No hay gastos en este periodo. Toca "Registrar gasto".')+'</p></td></tr>')+'</tbody></table></div></div>';
 }
+function productoCodigo(nombre){ var k = normalizar(nombre); var p = S.productos.find(function(x){ return x.nombre && normalizar(x.nombre)===k; }); return (p && p.codigo) ? String(p.codigo).trim() : ""; }
+function resolverProducto(txt){
+  // Acepta el codigo de la app (P-001) o el nombre; devuelve siempre el nombre del producto.
+  var t = String(txt||"").trim(); if(!t) return ""; var k = normalizar(t);
+  var porCodigo = S.productos.find(function(x){ return x.codigo && normalizar(x.codigo)===k; }); if(porCodigo && porCodigo.nombre) return String(porCodigo.nombre).trim();
+  var porNombre = S.productos.find(function(x){ return x.nombre && normalizar(x.nombre)===k; }); return porNombre ? String(porNombre.nombre).trim() : t;
+}
+function productosDatalist(){ return productosNombres().map(function(n){ var c = productoCodigo(n); return '<option value="'+escapeHtml(n)+'">'+(c ? escapeHtml(c) : '')+'</option>'; }).join(""); }
 function productosNombres(){
   var m = {}; S.productos.forEach(function(p){ if(p.nombre) m[normalizar(p.nombre)] = String(p.nombre).trim(); });
   Object.keys(S.egresos).forEach(function(id){ var e = S.egresos[id]; if(e.kardex && e.kardex.producto && !m[normalizar(e.kardex.producto)]) m[normalizar(e.kardex.producto)] = String(e.kardex.producto).trim(); });
@@ -2040,7 +2049,7 @@ function abrirFormGasto(e){
     + '<div class="grid-2"><div class="field"><label for="g-monto">Monto (S/)</label><input type="number" id="g-monto" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="'+(g.monto===""?"":num(g.monto))+'"></div>'
     + '<div class="field"><label>Forma de pago</label><div class="pay-toggle" id="g-metodo">'+METODOS.map(function(m){ return '<button type="button" class="pay-opt'+(metodoK(g.metodo)===m?' on':'')+'" data-action="g-metodo" data-val="'+m+'">'+metodoLabel(m)+'</button>'; }).join("")+'</div></div></div>'
     + '<label class="chk"><input type="checkbox" id="g-kardex"'+(conKardex?' checked':'')+'> Es compra de mercadería (entra al Kardex)</label>'
-    + '<div id="g-kardex-campos" class="grid-2" style="'+(conKardex?'':'display:none;')+'"><div class="field"><label for="g-prod">Producto</label><input type="text" id="g-prod" list="g-prod-lista" placeholder="Ej. POLLO ENTERO" value="'+escapeHtml(conKardex?g.kardex.producto:"")+'"><datalist id="g-prod-lista">'+productosNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div>'
+    + '<div id="g-kardex-campos" class="grid-2" style="'+(conKardex?'':'display:none;')+'"><div class="field"><label for="g-prod">Producto</label><input type="text" id="g-prod" list="g-prod-lista" placeholder="Nombre o código (Ej. POLLO ENTERO o P-001)" value="'+escapeHtml(conKardex?g.kardex.producto:"")+'"><datalist id="g-prod-lista">'+productosDatalist()+'</datalist></div>'
     + '<div class="field"><label for="g-kg">Kilos / unidades</label><input type="number" id="g-kg" inputmode="decimal" step="0.01" min="0" placeholder="0" value="'+(conKardex?num(g.kardex.kg):"")+'"></div>'+(edit ? '' : '<div class="field"><label for="g-merma-kg">Merma al recibir (kg, opcional)</label><input type="number" id="g-merma-kg" inputmode="decimal" step="0.01" min="0" placeholder="0"></div><div class="field"><label for="g-merma-motivo">Motivo de la merma</label><select id="g-merma-motivo">'+MOTIVOS_MERMA.map(function(x){ return '<option value="'+escapeHtml(x)+'"'+(x==="Peso de menos del proveedor"?' selected':'')+'>'+escapeHtml(x)+'</option>'; }).join("")+'</select></div>')+'</div>'
     + '<div class="field"><label for="g-foto">Foto del comprobante (opcional) · se puede recortar y leer el monto</label><input type="file" id="g-foto" accept="image/*"><img id="g-foto-prev" class="foto-prev" src="'+(g.foto||"")+'" alt="" style="'+(g.foto?'':'display:none;')+'">'+(g.foto ? '<button type="button" class="btn btn-sm" data-action="g-quitar-foto" style="margin-top:6px;">Quitar foto</button>' : '')+'</div>'
     + '<div class="pin-error" id="g-error"></div>'
@@ -2135,7 +2144,7 @@ function guardarGasto(id){
   var err = document.getElementById("g-error"); err.textContent = "";
   var fecha = document.getElementById("g-fecha").value, cat = document.getElementById("g-cat").value, desc = document.getElementById("g-desc").value.trim();
   var monto = r2(document.getElementById("g-monto").value); var metodoBtn = document.querySelector("#g-metodo .pay-opt.on"); var metodo = metodoBtn ? metodoBtn.getAttribute("data-val") : "efectivo";
-  var conK = document.getElementById("g-kardex").checked; var prod = document.getElementById("g-prod").value.trim(); var kg = r2(document.getElementById("g-kg").value);
+  var conK = document.getElementById("g-kardex").checked; var prod = resolverProducto(document.getElementById("g-prod").value); var kg = r2(document.getElementById("g-kg").value);
   var img = document.getElementById("g-foto-prev"); var foto = (img && img.style.display!=="none" && img.src && img.src.indexOf("data:")===0) ? img.src : null;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; }
   if(!cat){ err.textContent = "Elige la categoría."; return; }
@@ -2209,7 +2218,7 @@ function renderKardex(){
   var r = periodo(), lista = calcKardex(r);
   var totE = 0, totS = 0, totC = 0, totCV = 0, totM = 0, totMC = 0;
   var rows = lista.map(function(p){ totE += p.entradas; totS += p.salidas; totC += p.costoCompra; totCV += p.costoVendido; totM += p.mermas; totMC += p.costoMerma;
-    return '<tr class="click" data-action="kardex-detalle" data-val="'+escapeHtml(p.nombre)+'"><td><strong>'+escapeHtml(p.nombre)+'</strong> <span class="kard-sub">'+escapeHtml(p.unidad)+'</span></td><td class="num">'+kgTxt(p.ini)+'</td><td class="num pos">+'+kgTxt(p.entradas)+'</td><td class="num negv">−'+kgTxt(p.salidas)+'</td><td class="num">'+(p.ajustes?(p.ajustes>0?'+':'')+kgTxt(p.ajustes):'—')+'</td><td class="num '+(p.mermas?'negv':'')+'">'+(p.mermas?'−'+kgTxt(p.mermas)+(p.costoProm?' <span class="kard-sub">S/ '+n2(p.costoMerma)+'</span>':''):'—')+'</td><td class="num '+(p.final<-0.001?'negv':'')+'"><strong>'+kgTxt(p.final)+'</strong></td><td class="num">'+(p.costoProm?n2(p.costoProm):'—')+'</td><td class="num">'+n2(p.costoCompra)+'</td><td class="num">'+(p.costoProm?n2(p.costoVendido):'—')+'</td></tr>'; }).join("");
+    return '<tr class="click" data-action="kardex-detalle" data-val="'+escapeHtml(p.nombre)+'"><td><strong>'+escapeHtml(p.nombre)+'</strong> <span class="kard-sub">'+(productoCodigo(p.nombre) ? escapeHtml(productoCodigo(p.nombre))+' · ' : '')+escapeHtml(p.unidad)+'</span></td><td class="num">'+kgTxt(p.ini)+'</td><td class="num pos">+'+kgTxt(p.entradas)+'</td><td class="num negv">−'+kgTxt(p.salidas)+'</td><td class="num">'+(p.ajustes?(p.ajustes>0?'+':'')+kgTxt(p.ajustes):'—')+'</td><td class="num '+(p.mermas?'negv':'')+'">'+(p.mermas?'−'+kgTxt(p.mermas)+(p.costoProm?' <span class="kard-sub">S/ '+n2(p.costoMerma)+'</span>':''):'—')+'</td><td class="num '+(p.final<-0.001?'negv':'')+'"><strong>'+kgTxt(p.final)+'</strong></td><td class="num">'+(p.costoProm?n2(p.costoProm):'—')+'</td><td class="num">'+n2(p.costoCompra)+'</td><td class="num">'+(p.costoProm?n2(p.costoVendido):'—')+'</td></tr>'; }).join("");
   var negativos = lista.filter(function(p){ return p.final < -0.001; }).length;
   return '<h1 class="section-title">Kardex</h1><p class="section-sub">Entradas = compras de mercadería registradas en Gastos (con producto y kilos). Salidas = kilos vendidos en las notas de la app. Mermas = producto perdido (malogrado, vencido, devuelto). Saldo = lo que debería quedar.</p>'
     + periodoBarHtml()
@@ -2222,7 +2231,7 @@ function renderKardex(){
 function abrirKardexDetalle(nombre){
   var r = periodo(), p = calcKardex(r).find(function(x){ return normalizar(x.nombre)===normalizar(nombre); }); if(!p) return;
   var rows = p.movs.map(function(m){ return '<tr><td>'+fechaCorta(m.fecha)+'</td><td><span class="tag '+(m.tipo==="Compra"?'efectivo':m.tipo==="Venta"?'banco':m.tipo==="Merma"?'merma':'cat')+'">'+m.tipo+'</span></td><td>'+escapeHtml(m.detalle)+'</td><td class="num '+(m.kg<0?'negv':'pos')+'">'+(m.kg>0?'+':'')+kgTxt(m.kg)+'</td><td class="num">'+kgTxt(m.saldo)+'</td><td class="num">'+(m.monto?n2(m.monto):'')+'</td><td>'+(m.id ? (m.tipo==="Compra" ? '<button class="btn btn-sm" data-action="editar-gasto" data-id="'+m.id+'">Editar</button>' : '<button class="btn btn-sm" data-action="quitar-mov" data-id="'+m.id+'">Quitar</button>') : '')+'</td></tr>'; }).join("");
-  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2>'+escapeHtml(p.nombre)+' <span class="mono">saldo '+kgTxt(p.final)+' '+escapeHtml(p.unidad)+'</span></h2>'
+  document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal wide" data-stop="1"><h2>'+escapeHtml(p.nombre)+(productoCodigo(p.nombre) ? ' <span class="kard-sub">'+escapeHtml(productoCodigo(p.nombre))+'</span>' : '')+' <span class="mono">saldo '+kgTxt(p.final)+' '+escapeHtml(p.unidad)+'</span></h2>'
     + '<p class="kard-sub">'+escapeHtml(r.titulo)+' · saldo inicial '+kgTxt(p.ini)+' · compras '+kgTxt(p.entradas)+' por '+fmt(p.costoCompra)+(p.costoProm?' (S/ '+n2(p.costoProm)+' por '+escapeHtml(p.unidad)+')':'')+' · vendido '+kgTxt(p.salidas)+' por '+fmt(p.ventaImporte)+(p.mermas?' · mermas '+kgTxt(p.mermas)+(p.costoProm?' (pérdida estimada '+fmt(p.costoMerma)+')':''):'')+'</p>'
     + '<div class="tbl-wrap" style="max-height:60vh;overflow-y:auto;"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="num">Kg</th><th class="num">Saldo</th><th class="num">S/</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="7"><p class="empty">Sin movimientos.</p></td></tr>')+'</tbody></table></div>'
     + '<div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cerrar</button></div></div></div>';
@@ -2230,7 +2239,7 @@ function abrirKardexDetalle(nombre){
 function abrirFormAjuste(){
   document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>Ajuste de inventario</h2>'
     + '<p class="kard-sub" style="margin-bottom:10px;">Sirve para poner el inventario inicial o corregir el saldo (merma, conteo físico). No es un gasto: no cambia la utilidad.</p>'
-    + '<div class="grid-2"><div class="field"><label for="a-fecha">Fecha</label><input type="date" id="a-fecha" value="'+todayISO()+'"></div><div class="field"><label for="a-prod">Producto</label><input type="text" id="a-prod" list="a-prod-lista" placeholder="Ej. POLLO ENTERO"><datalist id="a-prod-lista">'+productosNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="a-fecha">Fecha</label><input type="date" id="a-fecha" value="'+todayISO()+'"></div><div class="field"><label for="a-prod">Producto</label><input type="text" id="a-prod" list="a-prod-lista" placeholder="Nombre o código"><datalist id="a-prod-lista">'+productosDatalist()+'</datalist></div></div>'
     + '<div class="grid-2"><div class="field"><label for="a-kg">Kilos (negativo para restar)</label><input type="number" id="a-kg" inputmode="decimal" step="0.01" placeholder="Ej. 150 o -12.5"></div><div class="field"><label for="a-desc">Motivo</label><input type="text" id="a-desc" maxlength="80" placeholder="Inventario inicial, merma, conteo…"></div></div>'
     + '<div class="pin-error" id="a-error"></div><div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-ajuste">Guardar</button></div></div></div>';
   setTimeout(function(){ document.getElementById("a-prod").focus(); }, 50);
@@ -2238,14 +2247,14 @@ function abrirFormAjuste(){
 function abrirFormMerma(){
   document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>Registrar merma</h2>'
     + '<p class="kard-sub" style="margin-bottom:10px;">Producto que se perdió (malogrado, vencido, devuelto, robado). Descuenta los kilos del Kardex y muestra la pérdida estimada. No se resta otra vez de la utilidad: ese dinero ya se contó al comprar.</p>'
-    + '<div class="grid-2"><div class="field"><label for="m-fecha">Fecha</label><input type="date" id="m-fecha" value="'+todayISO()+'"></div><div class="field"><label for="m-prod">Producto</label><input type="text" id="m-prod" list="m-prod-lista" placeholder="Ej. POLLO ENTERO"><datalist id="m-prod-lista">'+productosNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div></div>'
+    + '<div class="grid-2"><div class="field"><label for="m-fecha">Fecha</label><input type="date" id="m-fecha" value="'+todayISO()+'"></div><div class="field"><label for="m-prod">Producto</label><input type="text" id="m-prod" list="m-prod-lista" placeholder="Nombre o código"><datalist id="m-prod-lista">'+productosDatalist()+'</datalist></div></div>'
     + '<div class="grid-2"><div class="field"><label for="m-kg">Kilos / unidades perdidos</label><input type="number" id="m-kg" inputmode="decimal" step="0.01" min="0" placeholder="Ej. 12.5"></div><div class="field"><label for="m-motivo">Motivo</label><select id="m-motivo">'+MOTIVOS_MERMA.map(function(x){ return '<option value="'+escapeHtml(x)+'">'+escapeHtml(x)+'</option>'; }).join("")+'</select></div></div>'
     + '<div class="field"><label for="m-desc">Detalle (opcional)</label><input type="text" id="m-desc" maxlength="80" placeholder="Ej. se cortó la cadena de frío"></div>'
     + '<div class="pin-error" id="m-error"></div><div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-merma">Guardar</button></div></div></div>';
   setTimeout(function(){ document.getElementById("m-prod").focus(); }, 50);
 }
 function guardarMerma(){
-  var err = document.getElementById("m-error"); var fecha = document.getElementById("m-fecha").value, prod = document.getElementById("m-prod").value.trim(), kg = r2(document.getElementById("m-kg").value), motivo = document.getElementById("m-motivo").value, desc = document.getElementById("m-desc").value.trim();
+  var err = document.getElementById("m-error"); var fecha = document.getElementById("m-fecha").value, prod = resolverProducto(document.getElementById("m-prod").value), kg = r2(document.getElementById("m-kg").value), motivo = document.getElementById("m-motivo").value, desc = document.getElementById("m-desc").value.trim();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; } if(!prod){ err.textContent = "Escribe el producto."; return; } if(!(kg > 0)){ err.textContent = "Escribe los kilos perdidos."; return; }
   var fp = parseFecha(fecha), id = genId("mm");
   var obj = { tipo:"merma", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:"Merma", descripcion:motivo + (desc ? " · "+desc : ""), motivo:motivo, monto:0, metodo:"efectivo", kardex:{ producto:prod.toUpperCase(), kg:kg }, foto:null, registradoPor:S.user.nombre, creadoEn:Date.now(), actualizadoEn:Date.now(), eliminado:false };
@@ -2254,7 +2263,7 @@ function guardarMerma(){
   closeOverlay(); render();
 }
 function guardarAjuste(){
-  var err = document.getElementById("a-error"); var fecha = document.getElementById("a-fecha").value, prod = document.getElementById("a-prod").value.trim(), kg = r2(document.getElementById("a-kg").value), desc = document.getElementById("a-desc").value.trim();
+  var err = document.getElementById("a-error"); var fecha = document.getElementById("a-fecha").value, prod = resolverProducto(document.getElementById("a-prod").value), kg = r2(document.getElementById("a-kg").value), desc = document.getElementById("a-desc").value.trim();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; } if(!prod){ err.textContent = "Escribe el producto."; return; } if(!kg){ err.textContent = "Escribe los kilos (distinto de cero)."; return; }
   var fp = parseFecha(fecha), id = genId("aj");
   var obj = { tipo:"ajuste", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:"Inventario", descripcion:desc || "Ajuste de inventario", monto:0, metodo:"efectivo", kardex:{ producto:prod.toUpperCase(), kg:kg }, foto:null, registradoPor:S.user.nombre, creadoEn:Date.now(), actualizadoEn:Date.now(), eliminado:false };
@@ -2558,53 +2567,69 @@ function clientesNombres(){ var vis = {}, out = []; function add(n){ n = String(
 
 // ---------- TINAS (bandejas que salen con los pedidos y deben volver) ----------
 function calcTinas(r){
-  var porC = {}, lista = [], salP = 0, entP = 0;
-  Object.keys(S.tinas).forEach(function(id){ var t = S.tinas[id]; if(t.eliminado) return; var k = normalizar(t.cliente||"(sin nombre)"); var g = porC[k] || (porC[k] = { cliente:String(t.cliente||"(sin nombre)").trim(), saldo:0, salidas:0, entradas:0, ultimaSalida:"", ultimaEntrada:"", desde:"", movs:[] });
-    var n = Math.round(num(t.cantidad)), f = String(t.fecha||"").slice(0,10); g.movs.push({ f:f, c:num(t.creadoEn), n:t.tipo==="entrada" ? -n : n });
+  var porC = {}, lista = [], salP = 0, entP = 0, bajP = 0, bajasTot = 0;
+  function grupo(cliente){ var k = normalizar(cliente||"(sin nombre)"); return porC[k] || (porC[k] = { cliente:String(cliente||"(sin nombre)").trim(), saldo:0, salidas:0, entradas:0, bajas:0, ultimaSalida:"", ultimaEntrada:"", desde:"", movs:[] }); }
+  Object.keys(S.tinas).forEach(function(id){ var t = S.tinas[id]; if(t.eliminado) return;
+    var n = Math.round(num(t.cantidad)), f = String(t.fecha||"").slice(0,10), enPer = f >= r.desde && f <= r.hasta;
+    if(t.tipo==="baja"){ // malograda / perdida: sale del total del negocio; si estaba con un cliente, ya no se le espera
+      bajasTot += n; if(enPer){ lista.push(t); bajP += n; }
+      if(t.cliente){ var gb = grupo(t.cliente); gb.movs.push({ f:f, c:num(t.creadoEn), n:-n }); gb.bajas += n; }
+      return; }
+    var g = grupo(t.cliente); g.movs.push({ f:f, c:num(t.creadoEn), n:t.tipo==="entrada" ? -n : n });
     if(t.tipo==="entrada"){ g.entradas += n; if(f > g.ultimaEntrada) g.ultimaEntrada = f; } else { g.salidas += n; if(f > g.ultimaSalida) g.ultimaSalida = f; }
-    if(f >= r.desde && f <= r.hasta){ lista.push(t); if(t.tipo==="entrada") entP += n; else salP += n; } });
+    if(enPer){ lista.push(t); if(t.tipo==="entrada") entP += n; else salP += n; } });
   var porCliente = Object.keys(porC).map(function(k){ var g = porC[k]; g.movs.sort(function(a,b){ return (a.f<b.f?-1:a.f>b.f?1:0) || (a.c-b.c); }); var saldo = 0; g.movs.forEach(function(m){ var antes = saldo; saldo += m.n; if(antes <= 0 && saldo > 0) g.desde = m.f; }); g.saldo = saldo; if(saldo <= 0) g.desde = ""; return g; }).sort(function(a,b){ return (b.saldo-a.saldo) || (a.cliente<b.cliente?-1:1); });
   lista.sort(function(a,b){ return (a.fecha<b.fecha?1:a.fecha>b.fecha?-1:0) || (num(b.creadoEn)-num(a.creadoEn)); });
-  return { porCliente:porCliente, enCalle:porCliente.reduce(function(s,g){ return s + Math.max(0, g.saldo); }, 0), conTinas:porCliente.filter(function(g){ return g.saldo > 0; }).length, salidasPer:salP, entradasPer:entP, lista:lista };
+  return { porCliente:porCliente, enCalle:porCliente.reduce(function(s,g){ return s + Math.max(0, g.saldo); }, 0), conTinas:porCliente.filter(function(g){ return g.saldo > 0; }).length, salidasPer:salP, entradasPer:entP, bajasPer:bajP, bajasTot:bajasTot, lista:lista };
 }
 function renderTinas(){
   var r = periodo(), T = calcTinas(r), A = S.config.alertas, hoyF = todayISO(), total = num(S.config.tinas.total);
   var filas = T.porCliente.filter(function(g){ return g.saldo !== 0; }).map(function(g){ var dias = g.desde ? diasEntre(g.desde, hoyF) : 0; var tarde = g.saldo > 0 && A.tinasDias > 0 && dias >= A.tinasDias;
     return '<tr'+(tarde ? ' style="background:var(--danger-bg);"' : '')+'><td><strong>'+escapeHtml(g.cliente)+'</strong></td><td class="num '+(g.saldo > 0 ? 'negv' : 'pos')+'"><strong>'+g.saldo+'</strong></td><td style="white-space:nowrap;">'+(g.desde ? fechaDisplay(g.desde)+' <span class="kard-sub">('+dias+' día'+(dias===1?'':'s')+(tarde ? ' ⚠' : '')+')</span>' : '—')+'</td><td class="kard-sub" style="white-space:nowrap;">'+(g.ultimaEntrada ? fechaDisplay(g.ultimaEntrada) : '—')+'</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-primary" data-action="nueva-tina" data-val="entrada" data-cliente="'+escapeHtml(g.cliente)+'">Devolución</button> <button class="btn btn-sm" data-action="nueva-tina" data-val="salida" data-cliente="'+escapeHtml(g.cliente)+'">Salida</button></td></tr>'; }).join("");
-  var movs = T.lista.map(function(t){ return '<tr><td style="white-space:nowrap;">'+fechaCorta(t.fecha)+' <span class="kard-sub">'+String(t.fecha).slice(0,4)+'</span></td><td><span class="tag '+(t.tipo==="entrada" ? 'efectivo' : 'merma')+'">'+(t.tipo==="entrada" ? 'Devolución' : 'Salida')+'</span></td><td>'+escapeHtml(t.cliente||"")+(t.nota ? '<div class="kard-sub">'+escapeHtml(t.nota)+'</div>' : '')+'</td><td class="num '+(t.tipo==="entrada" ? 'pos' : 'negv')+'">'+(t.tipo==="entrada" ? '+' : '−')+Math.round(num(t.cantidad))+'</td><td class="kard-sub">'+escapeHtml(t.registradoPor||"")+'</td><td><button class="btn btn-sm btn-ghost" data-action="eliminar-tina" data-id="'+t.id+'" style="color:var(--danger);">Quitar</button></td></tr>'; }).join("");
+  var movs = T.lista.map(function(t){ var baja = t.tipo==="baja"; return '<tr><td style="white-space:nowrap;">'+fechaCorta(t.fecha)+' <span class="kard-sub">'+String(t.fecha).slice(0,4)+'</span></td><td><span class="tag '+(t.tipo==="entrada" ? 'efectivo' : baja ? 'cat' : 'merma')+'">'+(t.tipo==="entrada" ? 'Devolución' : baja ? 'Baja' : 'Salida')+'</span></td><td>'+(baja ? escapeHtml(t.motivo||"Malograda / perdida")+(t.cliente ? ' · '+escapeHtml(t.cliente) : '')+(num(t.costo) > 0 ? '<div class="kard-sub">gasto '+fmt(num(t.costo)*Math.round(num(t.cantidad)))+' (S/ '+n2(t.costo)+' por tina)</div>' : '') : escapeHtml(t.cliente||""))+(t.nota ? '<div class="kard-sub">'+escapeHtml(t.nota)+'</div>' : '')+'</td><td class="num '+(t.tipo==="entrada" ? 'pos' : 'negv')+'">'+(t.tipo==="entrada" ? '+' : '−')+Math.round(num(t.cantidad))+'</td><td class="kard-sub">'+escapeHtml(t.registradoPor||"")+'</td><td><button class="btn btn-sm btn-ghost" data-action="eliminar-tina" data-id="'+t.id+'" style="color:var(--danger);">Quitar</button></td></tr>'; }).join("");
   var tarde = T.porCliente.filter(function(g){ return g.saldo > 0 && A.tinasDias > 0 && g.desde && diasEntre(g.desde, hoyF) >= A.tinasDias; }).length;
-  return '<h1 class="section-title">Tinas</h1><p class="section-sub">Control de las tinas (bandejas) que salen con los pedidos y deben regresar. Registre la salida cuando se entregan con producto y la devolución cuando el cliente las regresa. Cada cliente queda con su saldo.</p>'
+  return '<h1 class="section-title">Tinas</h1><p class="section-sub">Control de las tinas (bandejas) que salen con los pedidos y deben regresar. Registre la salida cuando se entregan con producto, la devolución cuando el cliente las regresa y la baja cuando una se malogra o se pierde. Cada cliente queda con su saldo.</p>'
     + periodoBarHtml()
-    + '<div class="toolbar"><button class="btn btn-primary" data-action="nueva-tina" data-val="salida">+ Salida de tinas</button><button class="btn" data-action="nueva-tina" data-val="entrada">↩ Devolución</button></div>'
+    + '<div class="toolbar"><button class="btn btn-primary" data-action="nueva-tina" data-val="salida">+ Salida de tinas</button><button class="btn" data-action="nueva-tina" data-val="entrada">↩ Devolución</button><button class="btn" data-action="nueva-tina" data-val="baja">− Malogradas / perdidas</button></div>'
     + (tarde ? '<div class="note warn">'+tarde+' cliente'+(tarde===1?'':'s')+' tiene'+(tarde===1?'':'n')+' tinas desde hace más de '+A.tinasDias+' días (marcados en rojo). El límite se cambia en Avisos.</div>' : '')
-    + '<div class="stat-row"><div class="stat egr"><div class="label">Tinas en la calle</div><div class="value">'+T.enCalle+'</div><div class="sub">'+(total ? 'de '+total+' del negocio · quedan '+Math.max(0, total - T.enCalle)+' en el local' : 'ponga el total de tinas en Ajustes')+'</div></div><div class="stat"><div class="label">Clientes con tinas</div><div class="value">'+T.conTinas+'</div></div><div class="stat"><div class="label">Salidas · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.salidasPer+'</div></div><div class="stat ing"><div class="label">Devoluciones · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.entradasPer+'</div></div></div>'
+    + '<div class="stat-row"><div class="stat egr"><div class="label">Tinas en la calle</div><div class="value">'+T.enCalle+'</div><div class="sub">'+(total ? 'de '+Math.max(0, total - T.bajasTot)+' en uso'+(T.bajasTot ? ' ('+total+' compradas, '+T.bajasTot+' de baja)' : '')+' · quedan '+Math.max(0, total - T.bajasTot - T.enCalle)+' en el local' : 'ponga el total de tinas en Ajustes')+'</div></div><div class="stat"><div class="label">Clientes con tinas</div><div class="value">'+T.conTinas+'</div></div><div class="stat"><div class="label">Salidas · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.salidasPer+'</div></div><div class="stat ing"><div class="label">Devoluciones · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.entradasPer+'</div></div><div class="stat'+(T.bajasPer ? ' egr' : '')+'"><div class="label">Malogradas / perdidas · '+escapeHtml(r.titulo)+'</div><div class="value">'+T.bajasPer+'</div><div class="sub">'+(T.bajasTot ? T.bajasTot+' de baja en total' : 'ninguna todavía')+'</div></div></div>'
     + '<div class="cols-2"><div class="card"><h2>Por cliente <span class="kard-sub">saldo de tinas que tiene cada uno</span></h2><div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th class="num">Tiene</th><th>Desde</th><th>Última devolución</th><th></th></tr></thead><tbody>'+(filas || '<tr><td colspan="5"><p class="empty">Ningún cliente tiene tinas. Registre la primera salida.</p></td></tr>')+'</tbody></table></div></div>'
     + '<div class="card"><h2>Movimientos · '+escapeHtml(r.titulo)+'</h2><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th class="num">Tinas</th><th>Por</th><th></th></tr></thead><tbody>'+(movs || '<tr><td colspan="6"><p class="empty">Sin movimientos en este periodo.</p></td></tr>')+'</tbody></table></div></div></div>';
 }
 function abrirFormTina(tipo, cliente){
-  tipo = tipo==="entrada" ? "entrada" : "salida";
+  tipo = tipo==="entrada" ? "entrada" : tipo==="baja" ? "baja" : "salida";
   document.getElementById("overlay-root").innerHTML = '<div class="overlay" data-action="cerrar-overlay"><div class="modal" data-stop="1"><h2>Registrar tinas</h2>'
-    + '<div class="field"><label>Tipo</label><div class="pay-toggle" id="t-tipo"><button type="button" class="pay-opt'+(tipo==="salida"?' on':'')+'" data-action="tina-tipo" data-val="salida">Salida (se entregan con producto)</button><button type="button" class="pay-opt'+(tipo==="entrada"?' on':'')+'" data-action="tina-tipo" data-val="entrada">Devolución (el cliente las regresa)</button></div></div>'
+    + '<div class="field"><label>Tipo</label><div class="pay-toggle" id="t-tipo"><button type="button" class="pay-opt'+(tipo==="salida"?' on':'')+'" data-action="tina-tipo" data-val="salida">Salida (se entregan con producto)</button><button type="button" class="pay-opt'+(tipo==="entrada"?' on':'')+'" data-action="tina-tipo" data-val="entrada">Devolución (el cliente las regresa)</button><button type="button" class="pay-opt'+(tipo==="baja"?' on':'')+'" data-action="tina-tipo" data-val="baja">Baja (malograda o perdida)</button></div></div>'
+    + '<div id="t-baja" class="grid-2" style="'+(tipo==="baja" ? '' : 'display:none;')+'"><div class="field"><label for="t-motivo">Motivo</label><select id="t-motivo">'+MOTIVOS_TINA.map(function(x){ return '<option value="'+escapeHtml(x)+'">'+escapeHtml(x)+'</option>'; }).join("")+'</select></div><div class="field"><label for="t-costo">Costo por tina (S/, opcional)</label><input type="number" id="t-costo" inputmode="decimal" step="0.01" min="0" placeholder="Si lo pone, se registra como gasto"></div><p class="kard-sub" style="grid-column:1 / -1;margin:-4px 0 8px;">Si las tinas estaban con un cliente, escriba su nombre abajo: se descuentan de las que debe devolver.</p></div>'
     + '<div class="grid-2"><div class="field"><label for="t-fecha">Fecha</label><input type="date" id="t-fecha" value="'+todayISO()+'"></div><div class="field"><label for="t-cant">Cantidad de tinas</label><input type="number" id="t-cant" inputmode="numeric" step="1" min="1" placeholder="Ej. 6"></div></div>'
     + '<div class="field"><label for="t-cliente">Cliente</label><input type="text" id="t-cliente" list="t-lista" maxlength="60" placeholder="Nombre como está en las notas" value="'+escapeHtml(cliente||"")+'"><datalist id="t-lista">'+clientesNombres().map(function(n){ return '<option value="'+escapeHtml(n)+'">'; }).join("")+'</datalist></div>'
     + '<div class="field"><label for="t-nota">Nota (opcional)</label><input type="text" id="t-nota" maxlength="80" placeholder="Ej. las llevó Cristian con el pedido"></div>'
     + '<div class="pin-error" id="t-error"></div><div class="actions-row"><button class="btn" data-action="cerrar-overlay">Cancelar</button><button class="btn btn-primary" data-action="guardar-tina">Guardar</button></div></div></div>';
-  setTimeout(function(){ var el = document.getElementById(cliente ? "t-cant" : "t-cliente"); if(el) el.focus(); }, 50);
+  setTimeout(function(){ var el = document.getElementById(cliente ? "t-cant" : tipo==="baja" ? "t-cant" : "t-cliente"); if(el) el.focus(); }, 50);
 }
 function guardarTina(){
-  var err = document.getElementById("t-error"); var tb = document.querySelector("#t-tipo .pay-opt.on"); var tipo = tb ? tb.getAttribute("data-val") : "salida";
+  var err = document.getElementById("t-error"); var tb = document.querySelector("#t-tipo .pay-opt.on"); var tipo = tb ? tb.getAttribute("data-val") : "salida"; var baja = tipo==="baja";
   var fecha = document.getElementById("t-fecha").value, cant = Math.round(num(document.getElementById("t-cant").value)), cliente = document.getElementById("t-cliente").value.trim(), nota = document.getElementById("t-nota").value.trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; } if(!cliente){ err.textContent = "Escribe el cliente."; return; } if(!(cant > 0)){ err.textContent = "Escribe cuántas tinas."; return; }
-  var fp = parseFecha(fecha), id = genId("tn");
-  var obj = { tipo:tipo, cliente:cliente.toUpperCase(), cantidad:cant, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, nota:nota, registradoPor:S.user.nombre, creadoEn:Date.now(), eliminado:false };
+  var motivo = baja ? (document.getElementById("t-motivo")||{}).value || MOTIVOS_TINA[0] : "", costo = baja ? r2((document.getElementById("t-costo")||{}).value) : 0;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){ err.textContent = "Elige la fecha."; return; } if(!cliente && !baja){ err.textContent = "Escribe el cliente."; return; } if(!(cant > 0)){ err.textContent = "Escribe cuántas tinas."; return; }
+  if(baja && !cliente && motivo==="El cliente no la devolvió"){ err.textContent = "Escribe qué cliente no la devolvió."; return; }
+  var fp = parseFecha(fecha), id = genId("tn"), ahora = Date.now();
+  var obj = { tipo:tipo, cliente:cliente.toUpperCase(), cantidad:cant, fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, nota:nota, registradoPor:S.user.nombre, creadoEn:ahora, eliminado:false };
+  if(baja){ obj.motivo = motivo; obj.costo = costo; obj.gastoId = null;
+    if(costo > 0){ // la tina perdida cuesta: entra a Gastos y resta de la utilidad
+      var gid = genId("eg"), catT = S.categorias.indexOf("Insumos") > -1 ? "Insumos" : (S.categorias.indexOf("Otros") > -1 ? "Otros" : (S.categorias[0]||"Otros"));
+      var gobj = { tipo:"gasto", fecha:fecha, anio:fp.anio, mes:fp.mes, dia:fp.dia, categoria:catT, descripcion:"Tinas "+(motivo==="Perdida" ? "perdidas" : motivo==="El cliente no la devolvió" ? "no devueltas" : "malogradas")+": "+cant+(cliente ? " · "+cliente.toUpperCase() : "")+(nota ? " · "+nota : ""), monto:r2(cant*costo), metodo:"efectivo", kardex:null, foto:null, tinaId:id, registradoPor:S.user.nombre, creadoEn:ahora, actualizadoEn:ahora, eliminado:false };
+      S.egresos[gid] = Object.assign({}, gobj, { id:gid }); S.db.collection("egresos").doc(gid).set(gobj).catch(function(e){ console.error(e); }); obj.gastoId = gid; } }
   S.tinas[id] = Object.assign({}, obj, { id:id });
-  S.db.collection("tinas").doc(id).set(obj).then(function(){ toast(tipo==="entrada" ? "Devolución registrada" : "Salida registrada"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  S.db.collection("tinas").doc(id).set(obj).then(function(){ toast(tipo==="entrada" ? "Devolución registrada" : baja ? ("Baja registrada"+(obj.gastoId ? " · gasto de "+fmt(cant*costo) : "")) : "Salida registrada"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
   closeOverlay(); render();
 }
 function eliminarTina(id){
-  var t = S.tinas[id]; if(!t || !confirm("¿Quitar este movimiento de tinas ("+(t.tipo==="entrada" ? "devolución" : "salida")+" de "+t.cantidad+" · "+t.cliente+")?")) return;
+  var t = S.tinas[id]; if(!t || !confirm("¿Quitar este movimiento de tinas ("+(t.tipo==="entrada" ? "devolución" : t.tipo==="baja" ? "baja" : "salida")+" de "+t.cantidad+(t.cliente ? " · "+t.cliente : "")+")?"+(t.gastoId && S.egresos[t.gastoId] && !S.egresos[t.gastoId].eliminado ? " También se quita su gasto." : ""))) return;
   var cambio = { eliminado:true, eliminadoPor:S.user.nombre, eliminadoEn:Date.now() }; Object.assign(t, cambio);
-  S.db.collection("tinas").doc(id).set(cambio, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render();
+  S.db.collection("tinas").doc(id).set(cambio, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); });
+  if(t.gastoId && S.egresos[t.gastoId] && !S.egresos[t.gastoId].eliminado){ Object.assign(S.egresos[t.gastoId], cambio); S.db.collection("egresos").doc(t.gastoId).set(cambio, { merge:true }).catch(function(){}); }
+  render();
 }
 function guardarConfig(parte, obj){ S.config[parte] = Object.assign({}, S.config[parte], obj); var d = {}; d[parte] = S.config[parte]; d.actualizadoEn = Date.now(); d.por = S.user.nombre; S.db.doc("control/config").set(d, { merge:true }).then(function(){ toast("Guardado"); }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
 function guardarCategorias(){ S.db.doc("control/config").set({ categorias:S.categorias, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){ toast("No se pudo guardar: revisa tu internet"); }); render(); }
@@ -2931,7 +2956,7 @@ document.addEventListener("click", function(ev){
   if(action==="rec-quitar"){ if(!confirm("¿Quitar este gasto fijo? Los gastos ya registrados no se borran.")) return; var l2 = (S.config.recurrentes||[]).filter(function(x){ return x.id!==id; }); S.config.recurrentes = l2; S.db.doc("control/config").set({ recurrentes:l2, actualizadoEn:Date.now(), por:S.user.nombre }, { merge:true }).catch(function(){}); render(); return; }
   if(action==="merc-prod"){ UI.mercProd = val||""; render(); return; }
   if(action==="nueva-tina"){ abrirFormTina(val||"salida", t.getAttribute("data-cliente")||""); return; }
-  if(action==="tina-tipo"){ document.querySelectorAll("#t-tipo .pay-opt").forEach(function(b){ b.classList.toggle("on", b===t); }); return; }
+  if(action==="tina-tipo"){ document.querySelectorAll("#t-tipo .pay-opt").forEach(function(b){ b.classList.toggle("on", b===t); }); var tb = document.getElementById("t-baja"); if(tb) tb.style.display = val==="baja" ? "" : "none"; return; }
   if(action==="guardar-tina"){ guardarTina(); return; }
   if(action==="eliminar-tina"){ eliminarTina(id); return; }
   if(action==="guardar-tinas-config"){ guardarConfig("tinas", { total:Math.max(0, Math.round(num(document.getElementById("tinas-total").value))) }); return; }
