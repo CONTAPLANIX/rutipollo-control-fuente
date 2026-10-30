@@ -113,6 +113,15 @@ esumen_diario.py` + tarea de Windows "JEED resumen WhatsApp"
   bajan los cambios) y ventana de 70 días (`VENTANA_DIAS`, `cargarRecientes` → `S.ventanaDesde`, `S.recientesListo`); el año completo
   (`cargarAnio`) solo se pide si el periodo, el recorrido o la repetición caen antes de la ventana (`asegurarAnios` lo omite si no hace falta).
   `avisarCuota(e)` muestra un aviso claro ("cupo diario de lecturas; se renueva a las 2 am") en los listeners de ventas/egresos/deudas.
+- C41 (29-oct-2026): pulido visual con las skills de diseño instaladas en `~/.claude/skills` (`impeccable` de Paul Bakaus, referencias en
+  `impeccable/reference/*.md`, y las de Emil Kowalski `emil-design-eng`, `animate`, `improve-animations`, `review-animations`,
+  `animation-performance`, `find-animation-opportunities`): escala de letra con tokens `--fs-xs/sm/md/lg` (12/13/14/16), subtítulos a 72ch,
+  tarjetas con una sola elevación (borde, sin sombra) y sin franjas laterales (punto de color en la etiqueta `.stat.ing/.egr/.uti .label::before`),
+  sin la mancha naranja `.eq::after`, el camino del dinero va por el borde inferior (o izquierdo en celular) para no pisar el texto, superficies
+  del navegador con la paleta (selección, cursor, scroll, `accent-color`, subrayado), ventana y aviso flotante con `--ease-out` fuerte y
+  reduced-motion, `.cols-2{align-items:start}` (Ajustes ya no estira la tarjeta corta) y barra de pestañas del celular desplazable con la activa
+  centrada (`scrollIntoView` en `render`). Capturas automáticas para revisar diseño: `scratchpad\capturas.js` (Edge sin ventana + CDP; entra con
+  el admin temporal y fotografía cada vista en escritorio, celular y oscuro).
 - Un solo `index.html` sin frameworks (Firebase compat 10.13 + jsPDF 2.5.1), Excel .xlsx generado sin librerías (mismo código de la app).
   Versión en `APP_VERSION` (serie `CN`). Pensada para computadora, usable en celular.
 - Publicar: `python C:\Users\Jobes\JEED\herramientas\publicar.py rutipollo-control` (repo privado CONTAPLANIX/rutipollo-control-fuente,
